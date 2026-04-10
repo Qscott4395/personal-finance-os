@@ -9,6 +9,7 @@ import {
 
 import { calculateTax, type State } from '@/lib/tax';
 import { calculateProjection } from '@/lib/projection';
+import { buildPaycheckTimeline } from '@/lib/paycheck-timeline';
 import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
 import {
@@ -139,6 +140,12 @@ export default function Page() {
   const annualTrueSavings =
     tax.contribution401k + employerMatch + rothAnnual + brokerageAnnual + cashSavingsAnnual;
   const trueSavingsRate = salary > 0 ? (annualTrueSavings / salary) * 100 : 0;
+
+  // ── Derived: Paycheck Timeline ────────────────────────────────────────────────
+  const timeline = useMemo(
+    () => buildPaycheckTimeline(tax, paySchedule),
+    [tax, paySchedule],
+  );
 
   // ── Chart Data ───────────────────────────────────────────────────────────────
   const incomeBarData = [
@@ -621,6 +628,105 @@ export default function Page() {
                 {' '}—{' '}
                 <strong className="text-red-400">{fmt(projection.finalValue - projEarlier.finalValue)} less</strong>.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Paycheck Timeline */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Paycheck Timeline</h2>
+              <p className="text-slate-400 text-sm">
+                {paySchedule === 26 ? 'Biweekly (26 checks/yr)' : 'Semimonthly (24 checks/yr)'} · 2025 tax year
+              </p>
+            </div>
+            <div className="flex gap-6 text-right">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Current Check</p>
+                <p className="text-xl font-bold text-emerald-400">#{timeline.currentCheckNumber} <span className="text-slate-500 text-sm font-normal">of {timeline.totalChecks}</span></p>
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Checks Remaining</p>
+                <p className="text-xl font-bold text-blue-400">{timeline.remainingChecks}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div>
+            <div className="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Jan</span>
+              <span>Dec</span>
+            </div>
+            <div className="h-3 bg-slate-700 rounded-full overflow-hidden relative">
+              <div
+                className="h-full bg-emerald-400/80 rounded-full transition-all duration-500"
+                style={{ width: `${(timeline.currentCheckNumber / timeline.totalChecks) * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-emerald-400">{fmtPct((timeline.currentCheckNumber / timeline.totalChecks) * 100)} complete</span>
+              <span className="text-slate-500">{fmtPct((timeline.remainingChecks / timeline.totalChecks) * 100)} remaining</span>
+            </div>
+          </div>
+
+          {/* YTD / Remaining summary cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">YTD Gross Earned</p>
+              <p className="text-white text-lg font-bold">{fmt(timeline.ytdGross)}</p>
+              <p className="text-slate-500 text-xs mt-0.5">of {fmt(tax.grossIncome)} annual</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">YTD Taxes Paid</p>
+              <p className="text-red-400 text-lg font-bold">{fmt(timeline.ytdTaxes)}</p>
+              <p className="text-slate-500 text-xs mt-0.5">Fed + State + FICA</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">YTD Net Received</p>
+              <p className="text-emerald-400 text-lg font-bold">{fmt(timeline.ytdNet)}</p>
+              <p className="text-slate-500 text-xs mt-0.5">{fmt(timeline.remainingNet)} remaining</p>
+            </div>
+          </div>
+
+          {/* Per-check detail */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">Per Check</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <RowStat label="Gross Pay" value={fmt(tax.grossIncome / paySchedule)} accent="text-white" />
+              <RowStat label="Federal Tax" value={`(${fmt(tax.federalTax / paySchedule)})`} accent="text-red-400" />
+              <RowStat label="State Tax" value={`(${fmt(tax.stateTax / paySchedule)})`} accent="text-orange-400" />
+              <RowStat label="FICA" value={`(${fmt(tax.totalFICA / paySchedule)})`} accent="text-yellow-400" />
+              <RowStat label="401(k)" value={`(${fmt(tax.contribution401k / paySchedule)})`} accent="text-blue-400" />
+              <RowStat label="Medical" value={`(${fmt(tax.medicalInsurance / paySchedule)})`} accent="text-blue-400" />
+            </div>
+            <Divider />
+            <div className="flex justify-between pt-2">
+              <span className="text-white font-semibold">Net Per Check</span>
+              <span className="text-emerald-400 font-bold text-lg">{fmt(tax.netIncome / paySchedule)}</span>
+            </div>
+          </div>
+
+          {/* Paycheck grid */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-3">All Paychecks</p>
+            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-13 gap-1.5">
+              {timeline.paychecks.map((pc) => (
+                <div
+                  key={pc.number}
+                  className={`rounded-lg p-2 text-center text-xs transition-colors ${
+                    pc.number <= timeline.currentCheckNumber
+                      ? 'bg-emerald-500/20 border border-emerald-500/30'
+                      : 'bg-slate-700/40 border border-slate-700'
+                  } ${pc.number === timeline.currentCheckNumber ? 'ring-1 ring-emerald-400' : ''}`}
+                >
+                  <p className={`font-bold ${pc.number <= timeline.currentCheckNumber ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    #{pc.number}
+                  </p>
+                  <p className="text-slate-400 text-[10px] mt-0.5">{pc.date}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
