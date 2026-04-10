@@ -1,8 +1,10 @@
 import type { TaxResult } from './tax';
+import type { PaycheckEntry } from './paycheck-timeline';
 
 export interface MonthlySummaryRow {
   month: string;
   monthIndex: number;
+  checks: number;
   grossIncome: number;
   taxes: number;
   deductions: number; // 401k + medical
@@ -17,33 +19,49 @@ const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 
 export function buildMonthlySummary(
   tax: TaxResult,
+  paychecks: PaycheckEntry[],
   monthlyExpenses: number,
 ): MonthlySummaryRow[] {
   const now = new Date();
   const currentMonth = now.getMonth();
 
-  // Use flat 1/12 split to match dashboard calculations
-  const monthlyGross      = tax.grossIncome / 12;
-  const monthlyTaxes      = (tax.federalTax + tax.stateTax + tax.totalFICA) / 12;
-  const monthlyDeductions = (tax.contribution401k + tax.medicalInsurance) / 12;
-  const monthlyNet        = tax.netIncome / 12;
-  const monthlySurplus    = monthlyNet - monthlyExpenses;
+  // Group paychecks by month
+  const monthlyPaychecks: Record<number, PaycheckEntry[]> = {};
+  for (let m = 0; m < 12; m++) monthlyPaychecks[m] = [];
+  for (const pc of paychecks) {
+    monthlyPaychecks[pc.month].push(pc);
+  }
+
+  const perCheck = {
+    gross: tax.grossIncome / paychecks.length,
+    taxes: (tax.federalTax + tax.stateTax + tax.totalFICA) / paychecks.length,
+    deductions: (tax.contribution401k + tax.medicalInsurance) / paychecks.length,
+    net: tax.netIncome / paychecks.length,
+  };
 
   let cumulative = 0;
   const rows: MonthlySummaryRow[] = [];
 
   for (let m = 0; m < 12; m++) {
-    cumulative += monthlySurplus;
+    const count = monthlyPaychecks[m].length;
+
+    const grossIncome = count * perCheck.gross;
+    const taxes = count * perCheck.taxes;
+    const deductions = count * perCheck.deductions;
+    const netIncome = count * perCheck.net;
+    const surplus = netIncome - monthlyExpenses;
+    cumulative += surplus;
 
     rows.push({
       month: MONTH_NAMES[m],
       monthIndex: m,
-      grossIncome: monthlyGross,
-      taxes: monthlyTaxes,
-      deductions: monthlyDeductions,
-      netIncome: monthlyNet,
+      checks: count,
+      grossIncome,
+      taxes,
+      deductions,
+      netIncome,
       expenses: monthlyExpenses,
-      surplus: monthlySurplus,
+      surplus,
       cumulativeSavings: cumulative,
       isCurrent: m === currentMonth,
     });

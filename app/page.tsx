@@ -186,8 +186,8 @@ export default function Page() {
 
   // ── Derived: Monthly Summary ──────────────────────────────────────────────────
   const monthlySummary = useMemo(
-    () => buildMonthlySummary(tax, totalExpenses),
-    [tax, totalExpenses],
+    () => buildMonthlySummary(tax, timeline.paychecks, totalExpenses),
+    [tax, timeline.paychecks, totalExpenses],
   );
 
   // ── Chart Data ───────────────────────────────────────────────────────────────
@@ -227,7 +227,7 @@ export default function Page() {
             accent="text-emerald-400"
           />
           <SummaryCard
-            title="Monthly Surplus"
+            title="Monthly Surplus (Avg)"
             value={fmt(monthlySurplus)}
             sub={`True savings rate: ${fmtPct(trueSavingsRate)} of gross`}
             accent={monthlySurplus >= 0 ? 'text-emerald-400' : 'text-red-400'}
@@ -836,6 +836,7 @@ export default function Page() {
               <thead>
                 <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
                   <th className="text-left py-2 px-2 font-medium">Month</th>
+                  <th className="text-center py-2 px-2 font-medium">Checks</th>
                   <th className="text-right py-2 px-2 font-medium">Gross</th>
                   <th className="text-right py-2 px-2 font-medium">Taxes</th>
                   <th className="text-right py-2 px-2 font-medium">Deductions</th>
@@ -858,6 +859,9 @@ export default function Page() {
                     <td className={`py-2 px-2 font-medium ${row.isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}>
                       {row.month} {row.isCurrent && <span className="text-[10px] text-emerald-500 ml-1">NOW</span>}
                     </td>
+                    <td className={`text-center py-2 px-2 tabular-nums ${row.checks >= 3 ? 'text-emerald-400 font-medium' : 'text-slate-500'}`}>
+                      {row.checks}{row.checks >= 3 && <span className="text-[10px] ml-0.5">★</span>}
+                    </td>
                     <td className="text-right py-2 px-2 text-white tabular-nums">{fmt(row.grossIncome)}</td>
                     <td className="text-right py-2 px-2 text-red-400 tabular-nums">({fmt(row.taxes)})</td>
                     <td className="text-right py-2 px-2 text-blue-400 tabular-nums">({fmt(row.deductions)})</td>
@@ -875,6 +879,7 @@ export default function Page() {
               <tfoot>
                 <tr className="border-t border-slate-600 font-semibold text-sm">
                   <td className="py-3 px-2 text-white">Annual</td>
+                  <td className="text-center py-3 px-2 text-slate-400 tabular-nums">{monthlySummary.reduce((s, r) => s + r.checks, 0)}</td>
                   <td className="text-right py-3 px-2 text-white tabular-nums">{fmt(monthlySummary.reduce((s, r) => s + r.grossIncome, 0))}</td>
                   <td className="text-right py-3 px-2 text-red-400 tabular-nums">({fmt(monthlySummary.reduce((s, r) => s + r.taxes, 0))})</td>
                   <td className="text-right py-3 px-2 text-blue-400 tabular-nums">({fmt(monthlySummary.reduce((s, r) => s + r.deductions, 0))})</td>
