@@ -93,6 +93,13 @@ export default function Page() {
   const [showReal,          setShowReal]          = useState(false);
   const [showBands,         setShowBands]         = useState(true);
 
+  // ── What-If Scenario ──────────────────────────────────────────────────────────
+  const [scenarioType, setScenarioType] = useState<'none' | 'raise' | 'cut-expenses' | 'boost-401k' | 'custom'>('none');
+  const [scenarioSalary,      setScenarioSalary]      = useState(salary);
+  const [scenarioExpenses,    setScenarioExpenses]    = useState(0); // reduction amount
+  const [scenario401k,        setScenario401k]        = useState(contrib401k);
+  const [scenarioRothAnnual,  setScenarioRothAnnual]  = useState(rothAnnual);
+
   // ── Savings Goals ────────────────────────────────────────────────────────────
   interface SavingsGoal {
     id: number;
@@ -188,6 +195,40 @@ export default function Page() {
     () => buildPaycheckTimeline(tax, paySchedule, firstPayDate),
     [tax, paySchedule, firstPayDate],
   );
+
+  // ── Derived: What-If Scenario ──────────────────────────────────────────────────
+  const scenarioResults = useMemo(() => {
+    if (scenarioType === 'none') return null;
+
+    const sSalary = scenarioType === 'raise' ? scenarioSalary : salary;
+    const sContrib = scenarioType === 'boost-401k' ? scenario401k : contrib401k;
+    const sRoth = scenarioType === 'custom' ? scenarioRothAnnual : rothAnnual;
+    const expenseReduction = scenarioType === 'cut-expenses' ? scenarioExpenses : 0;
+
+    const sTax = calculateTax(sSalary, state, sContrib, monthlyMedical, isRoth401k);
+    const sEmployerMatch = sSalary * Math.min(sContrib / 100, employerMatchCap / 100) * (employerMatchRate / 100);
+    const sTotalExpenses = totalExpenses - expenseReduction;
+    const sSurplus = sTax.monthlyNetIncome - sTotalExpenses;
+    const sAnnualSavings = sTax.contribution401k + sEmployerMatch + sRoth + brokerageAnnual + cashSavingsAnnual;
+    const sSavingsRate = sSalary > 0 ? (sAnnualSavings / sSalary) * 100 : 0;
+
+    const sProj = calculateProjection({
+      ...projInput,
+      salary: sSalary,
+      contribution401kPct: sContrib,
+      rothAnnual: sRoth,
+    });
+
+    return {
+      tax: sTax,
+      surplus: sSurplus,
+      savingsRate: sSavingsRate,
+      netWorth: sProj.finalValue,
+      annualInvested: sProj.annualInvested,
+    };
+  }, [scenarioType, scenarioSalary, scenario401k, scenarioRothAnnual, scenarioExpenses,
+      salary, state, contrib401k, monthlyMedical, isRoth401k, employerMatchCap, employerMatchRate,
+      totalExpenses, rothAnnual, brokerageAnnual, cashSavingsAnnual, projInput]);
 
   // ── Chart Data ───────────────────────────────────────────────────────────────
   const incomeBarData = [
@@ -1185,6 +1226,122 @@ export default function Page() {
                 <p className="text-blue-400 font-bold">{fmt(monthlyCash)}/mo</p>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* What-If Scenarios */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+          <div>
+            <h2 className="text-base font-semibold text-white">What-If Scenarios</h2>
+            <p className="text-slate-400 text-sm">Model changes and see the impact side-by-side</p>
+          </div>
+
+          {/* Scenario selector */}
+          <div className="flex flex-wrap gap-2">
+            {([
+              ['none', 'Off'],
+              ['raise', 'Salary Raise'],
+              ['cut-expenses', 'Cut Expenses'],
+              ['boost-401k', 'Boost 401(k)'],
+              ['custom', 'Custom'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => {
+                  setScenarioType(key);
+                  if (key === 'raise') setScenarioSalary(Math.round(salary * 1.1));
+                  if (key === 'boost-401k') setScenario401k(Math.min(25, contrib401k + 3));
+                  if (key === 'cut-expenses') setScenarioExpenses(300);
+                  if (key === 'custom') { setScenarioSalary(salary); setScenarioRothAnnual(rothAnnual); }
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  scenarioType === key
+                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
+                    : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Scenario inputs */}
+          {scenarioType === 'raise' && (
+            <div className="max-w-xs">
+              <NumInput label="New Annual Salary" value={scenarioSalary} onChange={setScenarioSalary} prefix="$" step={5000} />
+            </div>
+          )}
+          {scenarioType === 'cut-expenses' && (
+            <div className="max-w-xs">
+              <NumInput label="Monthly Expense Reduction" value={scenarioExpenses} onChange={setScenarioExpenses} prefix="$" step={50} />
+            </div>
+          )}
+          {scenarioType === 'boost-401k' && (
+            <div className="max-w-xs">
+              <Slider label="New 401(k) %" value={scenario401k} min={0} max={25} step={0.5} onChange={setScenario401k} display={`${scenario401k}%`} />
+            </div>
+          )}
+          {scenarioType === 'custom' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl">
+              <NumInput label="Salary" value={scenarioSalary} onChange={setScenarioSalary} prefix="$" step={5000} />
+              <NumInput label="Roth IRA / Year" value={scenarioRothAnnual} onChange={setScenarioRothAnnual} prefix="$" step={500} />
+              <NumInput label="Expense Cut / Mo" value={scenarioExpenses} onChange={setScenarioExpenses} prefix="$" step={50} />
+            </div>
+          )}
+
+          {/* Comparison */}
+          {scenarioResults && scenarioType !== 'none' && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  label: 'Monthly Surplus',
+                  current: monthlySurplus,
+                  scenario: scenarioResults.surplus,
+                },
+                {
+                  label: 'Savings Rate',
+                  current: trueSavingsRate,
+                  scenario: scenarioResults.savingsRate,
+                  isPct: true,
+                },
+                {
+                  label: 'Annual Invested',
+                  current: projection.annualInvested,
+                  scenario: scenarioResults.annualInvested,
+                },
+                {
+                  label: `Net Worth at ${retirementAge}`,
+                  current: projection.finalValue,
+                  scenario: scenarioResults.netWorth,
+                },
+              ].map(({ label, current, scenario, isPct }) => {
+                const delta = scenario - current;
+                return (
+                  <div key={label} className="bg-slate-700/40 rounded-lg p-4 space-y-2">
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider">{label}</p>
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <p className="text-slate-400 text-xs">Current</p>
+                        <p className="text-white font-semibold">{isPct ? fmtPct(current) : fmt(current)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-purple-400 text-xs">Scenario</p>
+                        <p className="text-purple-400 font-semibold">{isPct ? fmtPct(scenario) : fmt(scenario)}</p>
+                      </div>
+                    </div>
+                    <div className={`text-xs font-medium text-center py-1 rounded ${
+                      delta > 0 ? 'bg-emerald-500/10 text-emerald-400' : delta < 0 ? 'bg-red-500/10 text-red-400' : 'bg-slate-700 text-slate-500'
+                    }`}>
+                      {delta > 0 ? '+' : ''}{isPct ? fmtPct(delta) : fmt(delta)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {scenarioType === 'none' && (
+            <p className="text-slate-600 text-sm text-center py-4">Select a scenario above to see the impact on your finances.</p>
           )}
         </div>
 
