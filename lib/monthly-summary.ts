@@ -1,5 +1,4 @@
 import type { TaxResult } from './tax';
-import type { PaycheckEntry } from './paycheck-timeline';
 
 export interface MonthlySummaryRow {
   month: string;
@@ -18,42 +17,33 @@ const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 
 export function buildMonthlySummary(
   tax: TaxResult,
-  paychecks: PaycheckEntry[],
   monthlyExpenses: number,
 ): MonthlySummaryRow[] {
   const now = new Date();
   const currentMonth = now.getMonth();
 
-  // Group paychecks by month
-  const monthlyPaychecks: Record<number, PaycheckEntry[]> = {};
-  for (let m = 0; m < 12; m++) monthlyPaychecks[m] = [];
-  for (const pc of paychecks) {
-    monthlyPaychecks[pc.month].push(pc);
-  }
+  // Use flat 1/12 split to match dashboard calculations
+  const monthlyGross      = tax.grossIncome / 12;
+  const monthlyTaxes      = (tax.federalTax + tax.stateTax + tax.totalFICA) / 12;
+  const monthlyDeductions = (tax.contribution401k + tax.medicalInsurance) / 12;
+  const monthlyNet        = tax.netIncome / 12;
+  const monthlySurplus    = monthlyNet - monthlyExpenses;
 
   let cumulative = 0;
   const rows: MonthlySummaryRow[] = [];
 
   for (let m = 0; m < 12; m++) {
-    const checks = monthlyPaychecks[m];
-    const count = checks.length;
-
-    const grossIncome = count * (tax.grossIncome / paychecks.length);
-    const taxes = count * ((tax.federalTax + tax.stateTax + tax.totalFICA) / paychecks.length);
-    const deductions = count * ((tax.contribution401k + tax.medicalInsurance) / paychecks.length);
-    const netIncome = count * (tax.netIncome / paychecks.length);
-    const surplus = netIncome - monthlyExpenses;
-    cumulative += surplus;
+    cumulative += monthlySurplus;
 
     rows.push({
       month: MONTH_NAMES[m],
       monthIndex: m,
-      grossIncome,
-      taxes,
-      deductions,
-      netIncome,
+      grossIncome: monthlyGross,
+      taxes: monthlyTaxes,
+      deductions: monthlyDeductions,
+      netIncome: monthlyNet,
       expenses: monthlyExpenses,
-      surplus,
+      surplus: monthlySurplus,
       cumulativeSavings: cumulative,
       isCurrent: m === currentMonth,
     });
