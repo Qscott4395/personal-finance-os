@@ -33,6 +33,11 @@ export default function Page() {
   const [monthlyMedical,   setMonthlyMedical]   = useState(200);
   const [firstPayDate,     setFirstPayDate]     = useState('2026-01-09');
 
+  // ── Monthly Expense Overrides ────────────────────────────────────────────────
+  // Key = month index (0-11), value = override amount (replaces baseline for that month)
+  const [expenseOverrides, setExpenseOverrides] = useState<Record<number, number>>({});
+  const [overrideLabels,   setOverrideLabels]   = useState<Record<number, string>>({});
+
   // ── Expenses — Housing ────────────────────────────────────────────────────────
   const [rent,          setRent]          = useState(1_500);
   const [homeInsurance, setHomeInsurance] = useState(100);
@@ -817,6 +822,121 @@ export default function Page() {
             </div>
           </div>
         </div>
+
+        {/* Monthly Expense Outlook */}
+        {(() => {
+          const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          let ytdBudgeted = 0;
+          let ytdActual = 0;
+          let annualTotal = 0;
+          const rows = MONTHS.map((m, i) => {
+            const baseline = totalExpenses;
+            const override = expenseOverrides[i];
+            const actual = override !== undefined ? override : baseline;
+            const diff = actual - baseline;
+            const label = overrideLabels[i] || '';
+            annualTotal += actual;
+            if (i <= currentMonth) {
+              ytdBudgeted += baseline;
+              ytdActual += actual;
+            }
+            return { month: m, index: i, baseline, actual, diff, label, isCurrent: i === currentMonth, hasOverride: override !== undefined };
+          });
+
+          return (
+            <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-semibold text-white">Monthly Expense Outlook</h2>
+                  <p className="text-slate-400 text-sm">Baseline: {fmt(totalExpenses)}/mo · Override months with irregular costs</p>
+                </div>
+                <div className="flex gap-4 text-right">
+                  <div>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider">Annual Projected</p>
+                    <p className="text-white font-bold">{fmt(annualTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider">YTD Variance</p>
+                    <p className={`font-bold ${ytdActual - ytdBudgeted > 0 ? 'text-red-400' : ytdActual - ytdBudgeted < 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      {ytdActual - ytdBudgeted > 0 ? '+' : ''}{fmt(ytdActual - ytdBudgeted)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {rows.map((row) => (
+                  <div
+                    key={row.index}
+                    className={`rounded-lg p-3 border transition-colors ${
+                      row.isCurrent
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : row.hasOverride
+                          ? 'bg-amber-500/10 border-amber-500/30'
+                          : 'bg-slate-700/40 border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-semibold ${row.isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}>
+                        {row.month}
+                        {row.isCurrent && <span className="text-[10px] text-emerald-500 ml-1">NOW</span>}
+                      </span>
+                      {row.hasOverride && row.diff !== 0 && (
+                        <span className={`text-[10px] font-medium ${row.diff > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {row.diff > 0 ? '+' : ''}{fmt(row.diff)}
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      type="number"
+                      value={row.hasOverride ? row.actual : ''}
+                      placeholder={fmt(row.baseline)}
+                      min={0}
+                      step={50}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setExpenseOverrides(o => { const n = { ...o }; delete n[row.index]; return n; });
+                        } else {
+                          setExpenseOverrides(o => ({ ...o, [row.index]: Number(val) }));
+                        }
+                      }}
+                      className={`w-full bg-slate-700/60 border rounded-lg py-1.5 px-2 text-sm
+                        focus:outline-none focus:border-emerald-400 transition-colors
+                        ${row.hasOverride ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-white'}`}
+                    />
+
+                    <input
+                      type="text"
+                      value={row.label}
+                      placeholder="Note..."
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setOverrideLabels(o => { const n = { ...o }; delete n[row.index]; return n; });
+                        } else {
+                          setOverrideLabels(o => ({ ...o, [row.index]: val }));
+                        }
+                      }}
+                      className="w-full bg-transparent border-b border-transparent text-slate-500 text-[10px] mt-1.5
+                        hover:border-slate-600 focus:border-emerald-400 focus:outline-none transition-colors placeholder-slate-600"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Legend */}
+              <div className="flex gap-4 text-[10px] text-slate-500">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-700 border border-slate-600" /> Baseline</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500/30 border border-amber-500/40" /> Override</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500/30 border border-emerald-500/40" /> Current</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Tax Withholding Tracker */}
         {(() => {
