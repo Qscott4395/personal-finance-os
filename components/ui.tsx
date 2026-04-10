@@ -145,9 +145,21 @@ export function CollapsibleCategory({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
+
+  // Sum the stacked buckets (401k, Roth, Brokerage, Cash) for total
+  const stackedKeys = new Set(['401(k)', 'Roth IRA', 'Brokerage', 'Cash']);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const total = payload.filter((p: any) => stackedKeys.has(p.name)).reduce((s: number, p: any) => s + (p.value || 0), 0);
+
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs shadow-xl">
       <p className="text-slate-300 font-semibold mb-2">Age {label}</p>
+      {total > 0 && (
+        <div className="flex justify-between gap-4 mb-1 pb-1 border-b border-slate-700">
+          <span className="text-purple-400 font-semibold">Total</span>
+          <span className="text-white font-bold">{fmt(total)}</span>
+        </div>
+      )}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {payload.map((p: any) => (
         <div key={p.name} className="flex justify-between gap-4">
