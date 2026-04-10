@@ -191,13 +191,14 @@ export function useFinanceState() {
   );
 
   // ── Derived: Withdrawal Modeling ────────────────────────────────────────────────
+  const annualLivingExpenses = totalLivingExpenses * 12;
   const withdrawalResult = useMemo(
-    () => calculateWithdrawal(projection.finalValue, withdrawalRate, retReturnRate, inflationRate, retirementAge),
-    [projection.finalValue, withdrawalRate, retReturnRate, inflationRate, retirementAge],
+    () => calculateWithdrawal(projection.finalValue, withdrawalRate, retReturnRate, inflationRate, retirementAge, annualLivingExpenses),
+    [projection.finalValue, withdrawalRate, retReturnRate, inflationRate, retirementAge, annualLivingExpenses],
   );
   const comparisonTable = useMemo(
-    () => buildComparisonTable(projection.finalValue, retReturnRate, inflationRate, retirementAge),
-    [projection.finalValue, retReturnRate, inflationRate, retirementAge],
+    () => buildComparisonTable(projection.finalValue, retReturnRate, inflationRate, retirementAge, undefined, annualLivingExpenses),
+    [projection.finalValue, retReturnRate, inflationRate, retirementAge, annualLivingExpenses],
   );
 
   // ── Derived: Trinity Study & Monte Carlo ───────────────────────────────────────
@@ -212,12 +213,12 @@ export function useFinanceState() {
   const monteCarloResult = useMemo(
     () => runMonteCarloSimulation({
       portfolioValue: projection.finalValue,
-      annualWithdrawal: projection.finalValue * (withdrawalRate / 100),
+      annualWithdrawal: Math.max(projection.finalValue * (withdrawalRate / 100), annualLivingExpenses),
       equityPct: targetAlloc.equity,
       inflationRate: inflationRate / 100,
       years: retDuration,
     }),
-    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration],
+    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration, annualLivingExpenses],
   );
 
   // ── Derived: Retirement Income Waterfall ────────────────────────────────────────
@@ -234,8 +235,9 @@ export function useFinanceState() {
       inflationRate,
       retirementReturnRate: retReturnRate,
       years: retDuration,
+      annualLivingExpenses,
     }),
-    [retirementAge, socialSecurityMo, pensionMo, projection, withdrawalRate, inflationRate, retReturnRate, retDuration],
+    [retirementAge, socialSecurityMo, pensionMo, projection, withdrawalRate, inflationRate, retReturnRate, retDuration, annualLivingExpenses],
   );
   const taxComparison = useMemo(
     () => compareWorkingVsRetirementTax(

@@ -69,6 +69,7 @@ export function buildRetirementIncomeWaterfall(params: {
   inflationRate: number;  // percentage
   retirementReturnRate: number; // percentage
   years: number;
+  annualLivingExpenses: number; // floor — can't withdraw less than you need to live
 }): RetirementYearIncome[] {
   const {
     retirementAge,
@@ -82,12 +83,14 @@ export function buildRetirementIncomeWaterfall(params: {
     inflationRate,
     retirementReturnRate,
     years,
+    annualLivingExpenses,
   } = params;
 
   const inflation = inflationRate / 100;
   const retReturn = retirementReturnRate / 100;
   const totalPortfolio = balance401k + balanceRoth + balanceBrokerage + balanceCash;
-  let annualNeed = totalPortfolio * (withdrawalRate / 100);
+  // Annual need is the greater of the %-based withdrawal or actual living expenses
+  let annualNeed = Math.max(totalPortfolio * (withdrawalRate / 100), annualLivingExpenses);
 
   let bal401k = balance401k;
   let balRoth = balanceRoth;

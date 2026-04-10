@@ -33,13 +33,14 @@ export function calculateWithdrawal(
   retirementReturnRate: number, // percentage during retirement, e.g. 5
   inflationRate: number,        // percentage, e.g. 3
   retirementAge: number,
+  annualLivingExpenses?: number, // floor — can't withdraw less than you need to live
 ): WithdrawalResult {
   const rate = withdrawalRate / 100;
   const retReturn = retirementReturnRate / 100;
   const inflation = inflationRate / 100;
 
   let balance = portfolioValue;
-  let annualWithdrawal = portfolioValue * rate;
+  let annualWithdrawal = Math.max(portfolioValue * rate, annualLivingExpenses ?? 0);
   const firstYearWithdrawal = annualWithdrawal;
   const yearByYear: WithdrawalYearData[] = [];
   let depleted = false;
@@ -92,10 +93,11 @@ export function buildComparisonTable(
   inflationRate: number,
   retirementAge: number,
   rates: number[] = [3, 3.5, 4, 4.5, 5],
+  annualLivingExpenses?: number,
 ): WithdrawalComparison[] {
   return rates.map(rate => {
     const result = calculateWithdrawal(
-      portfolioValue, rate, retirementReturnRate, inflationRate, retirementAge,
+      portfolioValue, rate, retirementReturnRate, inflationRate, retirementAge, annualLivingExpenses,
     );
     return {
       rate,
