@@ -1,6 +1,6 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, AreaChart, Area } from 'recharts';
 import { fmt, fmtPct, fmtShort } from '@/lib/formatters';
 import type { RiskTolerance, DriftResult } from '@/lib/allocation';
 import type { TrinityResult, MonteCarloResult } from '@/lib/survivability';
@@ -339,5 +339,77 @@ export function WaterfallChart({ data }: { data: RetirementYearIncome[] }) {
         <Bar dataKey="cashWithdrawal" stackId="1" fill={WATERFALL_COLORS.cash} name="Cash" radius={[2, 2, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
+  );
+}
+
+// ─── Portfolio Balance Over Time ──────────────────────────────────────────────
+
+export function PortfolioBalanceChart({ data }: { data: RetirementYearIncome[] }) {
+  if (data.length === 0) return null;
+
+  // Use every year for smooth curve (no sampling)
+  const chartData = data.map(d => ({
+    age: d.age,
+    '401(k)': d.remaining401k,
+    'Roth IRA': d.remainingRoth,
+    'Brokerage': d.remainingBrokerage,
+    'Cash': d.remainingCash,
+  }));
+
+  return (
+    <div className="space-y-2">
+      <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">
+        Portfolio Balance by Account — Each bucket grows until it's drawn
+      </p>
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+          <defs>
+            <linearGradient id="grad401k" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#60a5fa" stopOpacity={0.1} />
+            </linearGradient>
+            <linearGradient id="gradRoth" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#34d399" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#34d399" stopOpacity={0.1} />
+            </linearGradient>
+            <linearGradient id="gradBrokerage" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.6} />
+              <stop offset="95%" stopColor="#fbbf24" stopOpacity={0.1} />
+            </linearGradient>
+            <linearGradient id="gradCash" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.5} />
+              <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.1} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <XAxis
+            dataKey="age"
+            tick={{ fill: '#64748b', fontSize: 11 }}
+            axisLine={false} tickLine={false}
+            label={{ value: 'Age', position: 'insideBottom', offset: -10, fill: '#64748b', fontSize: 12 }}
+          />
+          <YAxis
+            tick={{ fill: '#64748b', fontSize: 11 }}
+            tickFormatter={fmtShort}
+            width={55}
+            stroke="#334155"
+          />
+          <Tooltip
+            contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+            itemStyle={{ color: '#e2e8f0' }}
+            formatter={(v: number) => fmt(v)}
+          />
+          <Legend
+            wrapperStyle={{ color: '#94a3b8', fontSize: '11px', paddingTop: '8px' }}
+            formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
+          />
+          {/* Draw in reverse order so brokerage (depletes first) is on top */}
+          <Area type="monotone" dataKey="Roth IRA" stackId="1" stroke="#34d399" fill="url(#gradRoth)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="401(k)" stackId="1" stroke="#60a5fa" fill="url(#grad401k)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="Cash" stackId="1" stroke="#94a3b8" fill="url(#gradCash)" strokeWidth={1.5} />
+          <Area type="monotone" dataKey="Brokerage" stackId="1" stroke="#fbbf24" fill="url(#gradBrokerage)" strokeWidth={1.5} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

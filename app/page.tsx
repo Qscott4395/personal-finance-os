@@ -14,7 +14,7 @@ import {
   getCurrentAllocation, getTargetAllocation, calculateDrift,
   projectAllocationByDecade, type RiskTolerance,
 } from '@/lib/allocation';
-import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert, HeatMapGrid, MonteCarloHistogram, WaterfallChart } from '@/components/retirement-ui';
+import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert, HeatMapGrid, MonteCarloHistogram, WaterfallChart, PortfolioBalanceChart } from '@/components/retirement-ui';
 import { calculateWithdrawal, buildComparisonTable } from '@/lib/withdrawal';
 import { buildTrinityHeatMap, maxSafeWithdrawalRate, runMonteCarloSimulation } from '@/lib/survivability';
 import { buildRetirementIncomeWaterfall, compareWorkingVsRetirementTax } from '@/lib/retirement-income';
@@ -1038,6 +1038,9 @@ export default function Page() {
 
           {/* Waterfall chart */}
           <WaterfallChart data={retirementWaterfall} />
+
+          {/* Portfolio balance chart */}
+          <PortfolioBalanceChart data={retirementWaterfall} />
 
           {/* Withdrawal order explanation */}
           <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">
