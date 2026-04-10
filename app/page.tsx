@@ -1,0 +1,556 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend, BarChart, Bar, Cell,
+} from 'recharts';
+
+import { calculateTax, type State } from '@/lib/tax';
+import { calculateProjection } from '@/lib/projection';
+import { STATES, CHART_COLORS as C } from '@/lib/constants';
+import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
+import {
+  SummaryCard, NumInput, Slider, Label,
+  RowStat, Divider, ChartTooltip, BarTooltip,
+} from '@/components/ui';
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function Page() {
+
+  // ── Income ──────────────────────────────────────────────────────────────────
+  const [salary,           setSalary]           = useState(100_000);
+  const [state,            setState_]           = useState<State>('IL');
+  const [contrib401k,      setContrib401k]      = useState(6);
+  const [isRoth401k,       setIsRoth401k]       = useState(false);
+  const [paySchedule,      setPaySchedule]      = useState<26 | 24>(26);
+  const [employerMatchRate,setEmployerMatchRate] = useState(100);
+  const [employerMatchCap, setEmployerMatchCap] = useState(4);
+  const [monthlyMedical,   setMonthlyMedical]   = useState(200);
+
+  // ── Expenses ─────────────────────────────────────────────────────────────────
+  const [housing,        setHousing]        = useState(1_800);
+  const [utilities,      setUtilities]      = useState(250);
+  const [food,           setFood]           = useState(600);
+  const [transportation, setTransportation] = useState(400);
+  const [debts,          setDebts]          = useState(500);
+  const [misc,           setMisc]           = useState(300);
+
+  // ── Investments & Projection ─────────────────────────────────────────────────
+  const [rothAnnual,        setRothAnnual]        = useState(6_500);
+  const [brokerageAnnual,   setBrokerageAnnual]   = useState(3_000);
+  const [cashSavingsAnnual, setCashSavingsAnnual] = useState(2_400);
+  const [balance401k,       setBalance401k]       = useState(15_000);
+  const [balanceRoth,       setBalanceRoth]       = useState(5_000);
+  const [balanceBrokerage,  setBalanceBrokerage]  = useState(5_000);
+  const [balanceCash,       setBalanceCash]       = useState(10_000);
+  const [currentAge,        setCurrentAge]        = useState(30);
+  const [retirementAge,     setRetirementAge]     = useState(65);
+  const [returnRate,        setReturnRate]        = useState(7);
+  const [cashRate,          setCashRate]          = useState(4.5);
+  const [salaryGrowth,      setSalaryGrowth]      = useState(3);
+
+  // ── Derived: Tax ─────────────────────────────────────────────────────────────
+  const tax = useMemo(
+    () => calculateTax(salary, state, contrib401k, monthlyMedical, isRoth401k),
+    [salary, state, contrib401k, monthlyMedical, isRoth401k],
+  );
+
+  // ── Derived: Projections ─────────────────────────────────────────────────────
+  const projInput = useMemo(() => ({
+    salary,
+    contribution401kPct: contrib401k,
+    employerMatchRate,
+    employerMatchCapPct: employerMatchCap,
+    rothAnnual,
+    brokerageAnnual,
+    cashSavingsAnnual,
+    currentAge,
+    retirementAge,
+    annualReturnPct: returnRate,
+    cashReturnPct:   cashRate,
+    salaryGrowthPct: salaryGrowth,
+    balance401k,
+    balanceRoth,
+    balanceBrokerage,
+    balanceCash,
+  }), [
+    salary, contrib401k, employerMatchRate, employerMatchCap,
+    rothAnnual, brokerageAnnual, cashSavingsAnnual,
+    currentAge, retirementAge, returnRate, cashRate, salaryGrowth,
+    balance401k, balanceRoth, balanceBrokerage, balanceCash,
+  ]);
+
+  const projection  = useMemo(() => calculateProjection(projInput), [projInput]);
+  const projHigher  = useMemo(
+    () => calculateProjection({ ...projInput, annualReturnPct: returnRate + 1 }),
+    [projInput, returnRate],
+  );
+  const projEarlier = useMemo(() => {
+    const earlyAge = Math.max(currentAge + 1, retirementAge - 5);
+    return calculateProjection({ ...projInput, retirementAge: earlyAge });
+  }, [projInput, currentAge, retirementAge]);
+
+  // ── Derived: Expenses & Savings ──────────────────────────────────────────────
+  const monthlyRoth         = rothAnnual / 12;
+  const monthlyBrokerage    = brokerageAnnual / 12;
+  const monthlyCash         = cashSavingsAnnual / 12;
+  const totalLivingExpenses = housing + utilities + food + transportation + debts + misc;
+  const totalExpenses       = totalLivingExpenses + monthlyRoth + monthlyBrokerage + monthlyCash;
+  const monthlySurplus      = tax.monthlyNetIncome - totalExpenses;
+  const employerMatch       = salary * Math.min(contrib401k / 100, employerMatchCap / 100) * (employerMatchRate / 100);
+
+  const cashSavingsRate = tax.monthlyNetIncome > 0
+    ? Math.max(0, (monthlySurplus / tax.monthlyNetIncome) * 100)
+    : 0;
+
+  const annualTrueSavings =
+    tax.contribution401k + employerMatch + rothAnnual + brokerageAnnual + cashSavingsAnnual;
+  const trueSavingsRate = salary > 0 ? (annualTrueSavings / salary) * 100 : 0;
+
+  // ── Chart Data ───────────────────────────────────────────────────────────────
+  const incomeBarData = [
+    { name: 'Federal',   value: Math.round(tax.federalTax        / paySchedule), fill: C.federal  },
+    { name: 'State',     value: Math.round(tax.stateTax          / paySchedule), fill: C.state    },
+    { name: 'FICA',      value: Math.round(tax.totalFICA         / paySchedule), fill: C.fica     },
+    { name: '401(k)',    value: Math.round(tax.contribution401k  / paySchedule), fill: C.k401     },
+    { name: 'Medical',   value: Math.round(tax.medicalInsurance  / paySchedule), fill: C.medical  },
+    { name: 'Take-Home', value: Math.round(tax.netIncome         / paySchedule), fill: C.net      },
+  ];
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Personal Finance OS</h1>
+            <p className="text-slate-400 text-sm mt-0.5">Real-time financial planning · 2024 tax brackets · Single filer</p>
+          </div>
+          <div className="text-right hidden sm:block">
+            <p className="text-slate-500 text-xs uppercase tracking-wider">Effective Tax Rate</p>
+            <p className="text-3xl font-bold text-amber-400 tabular-nums">{fmtPct(tax.effectiveTaxRate)}</p>
+            <p className="text-slate-500 text-xs">Marginal: {fmtPct(tax.marginalFederalRate * 100)} federal</p>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
+            title="Monthly Take-Home"
+            value={fmt(tax.monthlyNetIncome)}
+            sub={`${fmt(tax.netIncome)} / year`}
+            accent="text-emerald-400"
+          />
+          <SummaryCard
+            title="Monthly Surplus"
+            value={fmt(monthlySurplus)}
+            sub={`True savings rate: ${fmtPct(trueSavingsRate)} of gross`}
+            accent={monthlySurplus >= 0 ? 'text-emerald-400' : 'text-red-400'}
+          />
+          <SummaryCard
+            title="Annual Invested"
+            value={fmt(projection.annualInvested)}
+            sub="Employee + employer + Roth"
+            accent="text-blue-400"
+          />
+          <SummaryCard
+            title="Projected Net Worth"
+            value={fmt(projection.finalValue)}
+            sub={`At age ${retirementAge} · ${fmt(projection.finalCash)} in cash`}
+            accent="text-purple-400"
+          />
+        </div>
+
+        {/* Middle Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Income & Taxes */}
+          <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+            <h2 className="text-base font-semibold text-white">Income &amp; Taxes</h2>
+
+            <div className="grid grid-cols-2 gap-4">
+              <NumInput label="Annual Salary" value={salary} onChange={setSalary} prefix="$" step={1000} />
+              <div>
+                <Label>State</Label>
+                <select
+                  value={state}
+                  onChange={e => setState_(e.target.value as State)}
+                  className="w-full bg-slate-700/60 border border-slate-600 rounded-lg py-2 px-3 text-white text-sm
+                    focus:outline-none focus:border-emerald-400 transition-colors"
+                >
+                  {STATES.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 401(k) type toggle */}
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400 text-sm">401(k) Type</span>
+              <div className="flex rounded-lg overflow-hidden border border-slate-600 text-xs font-medium">
+                <button
+                  onClick={() => setIsRoth401k(false)}
+                  className={`px-3 py-1.5 transition-colors ${!isRoth401k ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                >
+                  Traditional (Pre-tax)
+                </button>
+                <button
+                  onClick={() => setIsRoth401k(true)}
+                  className={`px-3 py-1.5 transition-colors ${isRoth401k ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                >
+                  Roth (Post-tax)
+                </button>
+              </div>
+            </div>
+
+            <Slider
+              label={`401(k) Employee Contribution${isRoth401k ? ' — Roth (post-tax)' : ' — Traditional (pre-tax)'}`}
+              value={contrib401k} min={0} max={25} step={0.5}
+              onChange={setContrib401k}
+              display={`${contrib401k}%  ·  ${fmt(tax.contribution401k)}/yr`}
+            />
+            <Slider
+              label="Employer Match Rate"
+              value={employerMatchRate} min={0} max={100} step={10}
+              onChange={setEmployerMatchRate}
+              display={`${employerMatchRate}%`}
+            />
+            <Slider
+              label="Employer Match Cap (% of salary)"
+              value={employerMatchCap} min={0} max={10} step={0.5}
+              onChange={setEmployerMatchCap}
+              display={`${employerMatchCap}%  ·  ${fmt(employerMatch)}/yr`}
+            />
+            <NumInput
+              label="Medical Insurance (Monthly Pre-tax)"
+              value={monthlyMedical} onChange={setMonthlyMedical} prefix="$" step={25}
+            />
+
+            <Divider />
+
+            {/* Annual Breakdown */}
+            <div className="space-y-2.5">
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">Annual Breakdown</p>
+              <RowStat label="Gross Income" value={fmt(tax.grossIncome)} accent="text-white" />
+              <RowStat
+                label={isRoth401k ? '401(k) Post-tax (Roth)' : '401(k) Pre-tax (Traditional)'}
+                value={`(${fmt(tax.contribution401k)})`}
+                accent={isRoth401k ? 'text-emerald-400' : 'text-blue-400'}
+              />
+              <RowStat label="Medical Insurance"    value={`(${fmt(tax.medicalInsurance)})`} accent="text-blue-400" />
+              <RowStat label="Federal Tax"          value={`(${fmt(tax.federalTax)})`}       accent="text-red-400" />
+              <RowStat label="State Tax"            value={`(${fmt(tax.stateTax)})`}         accent="text-orange-400" />
+              <RowStat label="FICA (SS + Medicare)" value={`(${fmt(tax.totalFICA)})`}        accent="text-yellow-400" />
+              <Divider />
+              <div className="flex justify-between pt-0.5">
+                <span className="text-white font-semibold">Annual Net Income</span>
+                <span className="text-emerald-400 font-bold text-base">{fmt(tax.netIncome)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 text-xs">Effective tax rate</span>
+                <span className="text-slate-300 text-xs">{fmtPct(tax.effectiveTaxRate)}</span>
+              </div>
+            </div>
+
+            <Divider />
+
+            {/* Per-Paycheck Breakdown */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">Per Paycheck Breakdown</p>
+                <div className="flex rounded-lg overflow-hidden border border-slate-600 text-xs font-medium">
+                  <button
+                    onClick={() => setPaySchedule(26)}
+                    className={`px-3 py-1 transition-colors ${paySchedule === 26 ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                  >
+                    Biweekly (26×)
+                  </button>
+                  <button
+                    onClick={() => setPaySchedule(24)}
+                    className={`px-3 py-1 transition-colors ${paySchedule === 24 ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                  >
+                    Semimonthly (24×)
+                  </button>
+                </div>
+              </div>
+              <RowStat label="Gross Pay"     value={fmt(tax.grossIncome       / paySchedule)} accent="text-white" />
+              <RowStat
+                label={isRoth401k ? '401(k) Roth (post-tax)' : '401(k) Traditional (pre-tax)'}
+                value={`(${fmt(tax.contribution401k / paySchedule)})`}
+                accent={isRoth401k ? 'text-emerald-400' : 'text-blue-400'}
+              />
+              <RowStat label="Medical Insurance" value={`(${fmt(tax.medicalInsurance / paySchedule)})`} accent="text-blue-400" />
+              <RowStat label="Federal Tax"       value={`(${fmt(tax.federalTax       / paySchedule)})`} accent="text-red-400" />
+              <RowStat label="State Tax"         value={`(${fmt(tax.stateTax         / paySchedule)})`} accent="text-orange-400" />
+              <RowStat label="Social Security"   value={`(${fmt(tax.socialSecurity   / paySchedule)})`} accent="text-yellow-400" />
+              <RowStat label="Medicare"          value={`(${fmt(tax.medicare         / paySchedule)})`} accent="text-yellow-400" />
+              <Divider />
+              <div className="flex justify-between pt-0.5">
+                <span className="text-white font-semibold">Take-Home / Check</span>
+                <span className="text-emerald-400 font-bold text-lg">{fmt(tax.netIncome / paySchedule)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 text-xs">{paySchedule === 26 ? '26 checks/yr · every 2 weeks' : '24 checks/yr · twice a month'}</span>
+                <span className="text-slate-500 text-xs">Marginal: {fmtPct(tax.marginalFederalRate * 100)}</span>
+              </div>
+            </div>
+
+            <Divider />
+
+            {/* Income Composition Bar Chart */}
+            <div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">Monthly Income Composition</p>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={incomeBarData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {incomeBarData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Expenses & Investments */}
+          <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+            <h2 className="text-base font-semibold text-white">Monthly Expenses</h2>
+
+            <div className="grid grid-cols-2 gap-4">
+              <NumInput label="Housing"        value={housing}        onChange={setHousing}        prefix="$" step={50} />
+              <NumInput label="Utilities"      value={utilities}      onChange={setUtilities}      prefix="$" step={25} />
+              <NumInput label="Food"           value={food}           onChange={setFood}           prefix="$" step={50} />
+              <NumInput label="Transportation" value={transportation} onChange={setTransportation} prefix="$" step={50} />
+              <NumInput label="Debts"          value={debts}          onChange={setDebts}          prefix="$" step={50} />
+              <NumInput label="Miscellaneous"  value={misc}           onChange={setMisc}           prefix="$" step={50} />
+            </div>
+
+            {/* Expense Breakdown Bars */}
+            <div className="space-y-3">
+              {[
+                { label: 'Housing',        value: housing },
+                { label: 'Utilities',      value: utilities },
+                { label: 'Food',           value: food },
+                { label: 'Transportation', value: transportation },
+                { label: 'Debts',          value: debts },
+                { label: 'Miscellaneous',  value: misc },
+              ].map(row => (
+                <div key={row.label}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-slate-400">{row.label}</span>
+                    <span className="text-white">{fmt(row.value)}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400/70 rounded-full transition-all duration-300"
+                      style={{ width: `${totalExpenses > 0 ? (row.value / totalExpenses) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Divider />
+
+            <div className="space-y-2">
+              <RowStat label="Living Expenses"                          value={fmt(totalLivingExpenses)} accent="text-white" />
+              <RowStat label="Roth IRA (from Investment Settings)"      value={fmt(monthlyRoth)}         accent="text-blue-400" />
+              <RowStat label="Brokerage (from Investment Settings)"     value={fmt(monthlyBrokerage)}    accent="text-blue-400" />
+              <RowStat label="Cash Savings (from Investment Settings)"  value={fmt(monthlyCash)}         accent="text-slate-300" />
+              <Divider />
+              <RowStat label="Total Monthly Outflow" value={fmt(totalExpenses)} accent="text-white" />
+              <RowStat
+                label="Monthly Surplus"
+                value={fmt(monthlySurplus)}
+                accent={monthlySurplus >= 0 ? 'text-emerald-400' : 'text-red-400'}
+              />
+              <RowStat label="Cash Savings Rate (surplus / take-home)" value={fmtPct(cashSavingsRate)} accent="text-slate-300" />
+              <RowStat label="True Savings Rate (all savings / gross)"  value={fmtPct(trueSavingsRate)} accent="text-emerald-400" />
+            </div>
+
+            <Divider />
+
+            {/* Investment Settings */}
+            <div>
+              <h3 className="text-sm font-semibold text-slate-300 mb-4">Investment Settings</h3>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">Current Balances</p>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <NumInput label="401(k)"       value={balance401k}      onChange={setBalance401k}      prefix="$" step={1000} />
+                <NumInput label="Roth IRA"     value={balanceRoth}      onChange={setBalanceRoth}      prefix="$" step={1000} />
+                <NumInput label="Brokerage"    value={balanceBrokerage} onChange={setBalanceBrokerage} prefix="$" step={1000} />
+                <NumInput label="Cash Savings" value={balanceCash}      onChange={setBalanceCash}      prefix="$" step={500} />
+              </div>
+              <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mt-4">Annual Contributions</p>
+              <div className="grid grid-cols-3 gap-4 mt-2">
+                <NumInput label="Roth IRA / Year"     value={rothAnnual}        onChange={setRothAnnual}        prefix="$" step={500} max={7000} />
+                <NumInput label="Brokerage / Year"    value={brokerageAnnual}   onChange={setBrokerageAnnual}   prefix="$" step={500} />
+                <NumInput label="Cash Savings / Year" value={cashSavingsAnnual} onChange={setCashSavingsAnnual} prefix="$" step={500} />
+              </div>
+            </div>
+
+            {/* Investment Summary */}
+            <div className="bg-slate-700/40 rounded-lg p-4 space-y-2 text-sm">
+              <p className="text-slate-400 text-xs uppercase tracking-wider font-medium mb-3">Total Annual Investing</p>
+              <RowStat
+                label={isRoth401k ? 'Roth 401(k) (post-tax)' : 'Employee 401(k) (pre-tax)'}
+                value={fmt(tax.contribution401k)} accent="text-blue-400"
+              />
+              <RowStat label={`Employer Match (${employerMatchRate}% up to ${employerMatchCap}%)`} value={fmt(employerMatch)}     accent="text-blue-300" />
+              <RowStat label="Roth IRA (post-tax)"                                                  value={fmt(rothAnnual)}        accent="text-blue-400" />
+              <RowStat label="Brokerage (post-tax)"                                                 value={fmt(brokerageAnnual)}   accent="text-blue-400" />
+              <RowStat label="Cash Savings"                                                         value={fmt(cashSavingsAnnual)} accent="text-slate-300" />
+              <Divider />
+              <RowStat label="Total Annual" value={fmt(projection.annualInvested)}      accent="text-white" />
+              <RowStat label="Monthly"      value={fmt(projection.annualInvested / 12)} accent="text-slate-300" />
+            </div>
+          </div>
+        </div>
+
+        {/* Net Worth Projection */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Net Worth Projection</h2>
+              <p className="text-slate-400 text-sm">Contributions + compound growth over time</p>
+            </div>
+            <div className="flex flex-wrap gap-6">
+              <div className="text-right">
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Total at {retirementAge}</p>
+                <p className="text-2xl font-bold text-purple-400 tabular-nums">{fmt(projection.finalValue)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 text-xs uppercase tracking-wider">401(k)</p>
+                <p className="text-2xl font-bold text-blue-400 tabular-nums">{fmt(projection.final401k)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Roth IRA</p>
+                <p className="text-2xl font-bold text-emerald-400 tabular-nums">{fmt(projection.finalRoth)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Brokerage</p>
+                <p className="text-2xl font-bold text-amber-400 tabular-nums">{fmt(projection.finalBrokerage)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Cash</p>
+                <p className="text-2xl font-bold text-slate-300 tabular-nums">{fmt(projection.finalCash)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Projection Sliders */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            <Slider
+              label="Current Age"
+              value={currentAge} min={18} max={retirementAge - 1}
+              onChange={v => setCurrentAge(v)}
+              display={`${currentAge}`}
+            />
+            <Slider
+              label="Retirement Age"
+              value={retirementAge} min={currentAge + 1} max={80}
+              onChange={v => setRetirementAge(v)}
+              display={`${retirementAge}`}
+            />
+            <Slider
+              label="Investment Return Rate"
+              value={returnRate} min={1} max={15} step={0.5}
+              onChange={setReturnRate}
+              display={`${returnRate}%`}
+            />
+            <Slider
+              label="Cash / HYSA Rate"
+              value={cashRate} min={0} max={10} step={0.25}
+              onChange={setCashRate}
+              display={`${cashRate}%`}
+            />
+            <Slider
+              label="Salary Growth Rate"
+              value={salaryGrowth} min={0} max={10} step={0.5}
+              onChange={setSalaryGrowth}
+              display={`${salaryGrowth}%`}
+            />
+          </div>
+
+          {/* Net Worth Chart */}
+          <ResponsiveContainer width="100%" height={340}>
+            <AreaChart data={projection.data} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+              <defs>
+                {[
+                  { id: 'grad401k',      color: C.k401      },
+                  { id: 'gradRoth',      color: C.roth      },
+                  { id: 'gradBrokerage', color: C.brokerage },
+                  { id: 'gradCash',      color: C.cash      },
+                ].map(({ id, color }) => (
+                  <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={color} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0.1} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis
+                dataKey="age" stroke="#334155"
+                tick={{ fill: '#64748b', fontSize: 11 }}
+                label={{ value: 'Age', position: 'insideBottom', offset: -10, fill: '#64748b', fontSize: 12 }}
+              />
+              <YAxis
+                stroke="#334155"
+                tick={{ fill: '#64748b', fontSize: 11 }}
+                tickFormatter={fmtShort}
+                width={60}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend
+                wrapperStyle={{ color: '#94a3b8', fontSize: '12px', paddingTop: '8px' }}
+                formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
+              />
+              <Area type="monotone" dataKey="value401k"      stackId="1" stroke={C.k401}      fill="url(#grad401k)"      strokeWidth={1.5} name="401(k)" />
+              <Area type="monotone" dataKey="valueRoth"      stackId="1" stroke={C.roth}      fill="url(#gradRoth)"      strokeWidth={1.5} name="Roth IRA" />
+              <Area type="monotone" dataKey="valueBrokerage" stackId="1" stroke={C.brokerage} fill="url(#gradBrokerage)" strokeWidth={1.5} name="Brokerage" />
+              <Area type="monotone" dataKey="cashValue"      stackId="1" stroke={C.cash}      fill="url(#gradCash)"      strokeWidth={1.5} strokeDasharray="4 2" name="Cash" />
+            </AreaChart>
+          </ResponsiveContainer>
+
+          {/* Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-emerald-400 text-sm leading-relaxed">
+                At <strong>{returnRate}% return</strong>, you will have{' '}
+                <strong>{fmt(projection.finalValue)}</strong> at age {retirementAge}.
+              </p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-blue-400 text-sm leading-relaxed">
+                Increasing return to <strong>{returnRate + 1}%</strong> adds{' '}
+                <strong>{fmt(projHigher.finalValue - projection.finalValue)}</strong> to your balance.
+              </p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-amber-400 text-sm leading-relaxed">
+                Retiring 5 years earlier (age <strong>{Math.max(currentAge + 1, retirementAge - 5)}</strong>) gives you{' '}
+                <strong>{fmt(projEarlier.finalValue)}</strong>
+                {' '}—{' '}
+                <strong className="text-red-400">{fmt(projection.finalValue - projEarlier.finalValue)} less</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="text-center text-slate-600 text-xs pb-4">
+          Based on 2024 US tax brackets · Single filer · For educational purposes only — not financial advice.
+        </p>
+
+      </div>
+    </div>
+  );
+}
