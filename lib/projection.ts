@@ -80,9 +80,9 @@ export function calculateProjection(input: ProjectionInput): ProjectionResult {
   let balCash     = Math.max(0, balanceCash);
   let salary_     = Math.max(0, salary);
 
-  // Optimistic / conservative trackers (aggregate only)
-  let totalOpt  = bal401k + balRoth + balBrokerage + balCash;
-  let totalCons = totalOpt;
+  // Optimistic / conservative per-bucket trackers
+  let opt401k = bal401k;  let optRoth = balRoth;  let optBrok = balBrokerage;  let optCash = balCash;
+  let con401k = bal401k;  let conRoth = balRoth;  let conBrok = balBrokerage;  let conCash = balCash;
 
   const data: DataPoint[] = [];
   let annualInvested = 0;
@@ -98,15 +98,23 @@ export function calculateProjection(input: ProjectionInput): ProjectionResult {
 
     if (i === 0) annualInvested = totalContrib;
 
-    // Each bucket grows independently at the same return rate
+    // Each bucket grows independently at the base return rate
     bal401k      = bal401k      * (1 + returnRate) + employee401k + employerMatch;
     balRoth      = balRoth      * (1 + returnRate) + rothAnnual;
     balBrokerage = balBrokerage * (1 + returnRate) + brokerageAnnual;
     balCash      = balCash      * (1 + cashRate)   + cashSavingsAnnual;
 
-    // Confidence bands
-    totalOpt  = totalOpt  * (1 + optimisticReturn)   + totalContrib;
-    totalCons = totalCons * (1 + conservativeReturn)  + totalContrib;
+    // Optimistic bands: +2% on investment buckets, cash stays at cash rate
+    opt401k = opt401k * (1 + optimisticReturn) + employee401k + employerMatch;
+    optRoth = optRoth * (1 + optimisticReturn) + rothAnnual;
+    optBrok = optBrok * (1 + optimisticReturn) + brokerageAnnual;
+    optCash = optCash * (1 + cashRate)         + cashSavingsAnnual;
+
+    // Conservative bands: -2% on investment buckets, cash stays at cash rate
+    con401k = con401k * (1 + conservativeReturn) + employee401k + employerMatch;
+    conRoth = conRoth * (1 + conservativeReturn) + rothAnnual;
+    conBrok = conBrok * (1 + conservativeReturn) + brokerageAnnual;
+    conCash = conCash * (1 + cashRate)           + cashSavingsAnnual;
 
     salary_ *= 1 + growthRate;
 
@@ -120,8 +128,8 @@ export function calculateProjection(input: ProjectionInput): ProjectionResult {
       cashValue:        Math.round(balCash),
       totalValue:       Math.round(nominalTotal),
       totalNominal:     Math.round(nominalTotal),
-      totalOptimistic:  Math.round(totalOpt),
-      totalConservative: Math.round(totalCons),
+      totalOptimistic:  Math.round(opt401k + optRoth + optBrok + optCash),
+      totalConservative: Math.round(con401k + conRoth + conBrok + conCash),
     });
   }
 
