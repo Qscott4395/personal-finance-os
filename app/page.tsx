@@ -84,6 +84,9 @@ export default function Page() {
   const [returnRate,        setReturnRate]        = useState(7);
   const [cashRate,          setCashRate]          = useState(4.5);
   const [salaryGrowth,      setSalaryGrowth]      = useState(3);
+  const [inflationRate,     setInflationRate]     = useState(3);
+  const [showReal,          setShowReal]          = useState(false);
+  const [showBands,         setShowBands]         = useState(true);
 
   // ── Derived: Tax ─────────────────────────────────────────────────────────────
   const tax = useMemo(
@@ -142,6 +145,25 @@ export default function Page() {
   const annualTrueSavings =
     tax.contribution401k + employerMatch + rothAnnual + brokerageAnnual + cashSavingsAnnual;
   const trueSavingsRate = salary > 0 ? (annualTrueSavings / salary) * 100 : 0;
+
+  // ── Derived: Inflation-Adjusted Projection Data ───────────────────────────────
+  const chartData = useMemo(() => {
+    if (!showReal) return projection.data;
+    const rate = inflationRate / 100;
+    return projection.data.map((d, i) => {
+      const deflator = Math.pow(1 + rate, i);
+      return {
+        ...d,
+        value401k:         Math.round(d.value401k / deflator),
+        valueRoth:         Math.round(d.valueRoth / deflator),
+        valueBrokerage:    Math.round(d.valueBrokerage / deflator),
+        cashValue:         Math.round(d.cashValue / deflator),
+        totalValue:        Math.round(d.totalValue / deflator),
+        totalOptimistic:   Math.round(d.totalOptimistic / deflator),
+        totalConservative: Math.round(d.totalConservative / deflator),
+      };
+    });
+  }, [projection.data, showReal, inflationRate]);
 
   // ── Derived: Paycheck Timeline ────────────────────────────────────────────────
   const timeline = useMemo(
@@ -542,7 +564,7 @@ export default function Page() {
           </div>
 
           {/* Projection Sliders */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <Slider
               label="Current Age"
               value={currentAge} min={18} max={retirementAge - 1}
@@ -573,11 +595,41 @@ export default function Page() {
               onChange={setSalaryGrowth}
               display={`${salaryGrowth}%`}
             />
+            <Slider
+              label="Inflation Rate"
+              value={inflationRate} min={0} max={10} step={0.5}
+              onChange={setInflationRate}
+              display={`${inflationRate}%`}
+            />
+          </div>
+
+          {/* Chart toggles */}
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => setShowReal(r => !r)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                showReal
+                  ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                  : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'
+              }`}
+            >
+              {showReal ? `Inflation-Adjusted (${inflationRate}%)` : 'Show Inflation-Adjusted'}
+            </button>
+            <button
+              onClick={() => setShowBands(b => !b)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                showBands
+                  ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
+                  : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-white'
+              }`}
+            >
+              {showBands ? 'Confidence Range On' : 'Show Confidence Range'}
+            </button>
           </div>
 
           {/* Net Worth Chart */}
           <ResponsiveContainer width="100%" height={340}>
-            <AreaChart data={projection.data} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
               <defs>
                 {[
                   { id: 'grad401k',      color: C.k401      },
@@ -590,6 +642,10 @@ export default function Page() {
                     <stop offset="95%" stopColor={color} stopOpacity={0.1} />
                   </linearGradient>
                 ))}
+                <linearGradient id="gradBand" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#a78bfa" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.02} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis
@@ -608,6 +664,12 @@ export default function Page() {
                 wrapperStyle={{ color: '#94a3b8', fontSize: '12px', paddingTop: '8px' }}
                 formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
               />
+              {showBands && (
+                <>
+                  <Area type="monotone" dataKey="totalOptimistic" stroke="#a78bfa" fill="url(#gradBand)" strokeWidth={1} strokeDasharray="4 3" name={`Optimistic (+2%)`} />
+                  <Area type="monotone" dataKey="totalConservative" stroke="#64748b" fill="none" strokeWidth={1} strokeDasharray="4 3" name={`Conservative (-2%)`} />
+                </>
+              )}
               <Area type="monotone" dataKey="value401k"      stackId="1" stroke={C.k401}      fill="url(#grad401k)"      strokeWidth={1.5} name="401(k)" />
               <Area type="monotone" dataKey="valueRoth"      stackId="1" stroke={C.roth}      fill="url(#gradRoth)"      strokeWidth={1.5} name="Roth IRA" />
               <Area type="monotone" dataKey="valueBrokerage" stackId="1" stroke={C.brokerage} fill="url(#gradBrokerage)" strokeWidth={1.5} name="Brokerage" />
