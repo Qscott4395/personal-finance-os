@@ -930,12 +930,17 @@ export default function Page() {
               onChange={setRetDuration}
               display={`${retDuration} years`}
             />
-            <Slider
-              label="Target Confidence"
-              value={targetConfidence} min={80} max={99} step={1}
-              onChange={setTargetConfidence}
-              display={`${targetConfidence}%`}
-            />
+            <div>
+              <Slider
+                label="Target Confidence"
+                value={targetConfidence} min={80} max={99} step={1}
+                onChange={setTargetConfidence}
+                display={`${targetConfidence}%`}
+              />
+              <p className="text-slate-600 text-[10px] mt-1.5 leading-snug">
+                The % of historical 30-year periods where your portfolio survived. 95% means it lasted in 95 out of 100 historical scenarios.
+              </p>
+            </div>
             <div className="flex flex-col justify-end">
               <p className="text-slate-400 text-xs mb-1">Max Safe Withdrawal Rate</p>
               <p className="text-emerald-400 text-2xl font-bold">{maxSafeRate}%</p>
@@ -1138,26 +1143,71 @@ export default function Page() {
                   </div>
 
                   {/* Heir tax breakdown */}
-                  <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Estimated Heir Tax Impact</p>
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">401(k) heir income tax (~22% bracket)</span>
-                        <span className="text-red-400 tabular-nums">−{fmt(k401HeirTax)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Roth IRA (tax-free, no RMDs for heirs)</span>
-                        <span className="text-emerald-400 tabular-nums">$0</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Brokerage (stepped-up cost basis)</span>
-                        <span className="text-emerald-400 tabular-nums">$0</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-600 pt-1.5 font-medium">
-                        <span className="text-white">After-tax estate value</span>
-                        <span className="text-purple-400 tabular-nums">{fmt(estateAfterTax)}</span>
-                      </div>
+                  <div className="bg-slate-700/40 rounded-lg p-4 space-y-3">
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Heir Tax Breakdown</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                            <th className="text-left py-1.5 pr-3 font-medium">Account</th>
+                            <th className="text-right py-1.5 px-3 font-medium">Balance</th>
+                            <th className="text-right py-1.5 px-3 font-medium">Tax Rate</th>
+                            <th className="text-right py-1.5 px-3 font-medium">Tax Owed</th>
+                            <th className="text-right py-1.5 pl-3 font-medium">Heir Receives</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-slate-700/40">
+                            <td className="py-2 pr-3">
+                              <p className="text-blue-400 font-medium">401(k)</p>
+                              <p className="text-slate-600 text-[10px]">Pre-tax contributions — heirs owe ordinary income tax on every dollar withdrawn</p>
+                            </td>
+                            <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(k401Estate)}</td>
+                            <td className="py-2 px-3 text-right text-red-400 tabular-nums">22%</td>
+                            <td className="py-2 px-3 text-right text-red-400 tabular-nums">−{fmt(k401HeirTax)}</td>
+                            <td className="py-2 pl-3 text-right text-white font-medium tabular-nums">{fmt(k401Estate - k401HeirTax)}</td>
+                          </tr>
+                          <tr className="border-b border-slate-700/40">
+                            <td className="py-2 pr-3">
+                              <p className="text-emerald-400 font-medium">Roth IRA</p>
+                              <p className="text-slate-600 text-[10px]">Already taxed — heirs inherit tax-free; must withdraw within 10 years (SECURE Act)</p>
+                            </td>
+                            <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(rothEstate)}</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">0%</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">$0</td>
+                            <td className="py-2 pl-3 text-right text-white font-medium tabular-nums">{fmt(rothEstate)}</td>
+                          </tr>
+                          <tr className="border-b border-slate-700/40">
+                            <td className="py-2 pr-3">
+                              <p className="text-amber-400 font-medium">Brokerage</p>
+                              <p className="text-slate-600 text-[10px]">Stepped-up cost basis at death — heirs owe no capital gains on appreciation during your lifetime</p>
+                            </td>
+                            <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(brokerageEstate)}</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">0%</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">$0</td>
+                            <td className="py-2 pl-3 text-right text-white font-medium tabular-nums">{fmt(brokerageEstate)}</td>
+                          </tr>
+                          <tr className="border-b border-slate-700/40">
+                            <td className="py-2 pr-3">
+                              <p className="text-slate-300 font-medium">Cash</p>
+                              <p className="text-slate-600 text-[10px]">Already-taxed dollars — no additional tax for heirs</p>
+                            </td>
+                            <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(cashEstate)}</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">0%</td>
+                            <td className="py-2 px-3 text-right text-emerald-400 tabular-nums">$0</td>
+                            <td className="py-2 pl-3 text-right text-white font-medium tabular-nums">{fmt(cashEstate)}</td>
+                          </tr>
+                          <tr className="bg-slate-800/60">
+                            <td className="py-2 pr-3 font-semibold text-white">Total Estate</td>
+                            <td className="py-2 px-3 text-right text-white font-semibold tabular-nums">{fmt(estateTotal)}</td>
+                            <td className="py-2 px-3 text-right text-slate-400 tabular-nums">—</td>
+                            <td className="py-2 px-3 text-right text-red-400 font-semibold tabular-nums">−{fmt(k401HeirTax)}</td>
+                            <td className="py-2 pl-3 text-right text-purple-400 font-bold tabular-nums">{fmt(estateAfterTax)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
+                    <p className="text-slate-600 text-[10px]">* 22% heir income tax is an estimate. Actual rate depends on heir's income bracket. Federal estate tax (~40%) only applies above $13.6M exemption (2024).</p>
                   </div>
                 </>
               )}
