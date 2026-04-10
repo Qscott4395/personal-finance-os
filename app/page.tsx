@@ -88,6 +88,20 @@ export default function Page() {
   const [showReal,          setShowReal]          = useState(false);
   const [showBands,         setShowBands]         = useState(true);
 
+  // ── Savings Goals ────────────────────────────────────────────────────────────
+  interface SavingsGoal {
+    id: number;
+    name: string;
+    target: number;
+    current: number;
+    monthlyContrib: number;
+  }
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([
+    { id: 1, name: 'Emergency Fund', target: 15000, current: 5000, monthlyContrib: 300 },
+    { id: 2, name: 'Vacation', target: 3000, current: 800, monthlyContrib: 150 },
+  ]);
+  const [nextGoalId, setNextGoalId] = useState(3);
+
   // ── Derived: Tax ─────────────────────────────────────────────────────────────
   const tax = useMemo(
     () => calculateTax(salary, state, contrib401k, monthlyMedical, isRoth401k),
@@ -875,6 +889,140 @@ export default function Page() {
               </tfoot>
             </table>
           </div>
+        </div>
+
+        {/* Savings Goals */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Savings Goals</h2>
+              <p className="text-slate-400 text-sm">Track progress toward specific financial targets</p>
+            </div>
+            <button
+              onClick={() => {
+                setSavingsGoals(g => [...g, { id: nextGoalId, name: 'New Goal', target: 5000, current: 0, monthlyContrib: 100 }]);
+                setNextGoalId(n => n + 1);
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+            >
+              + Add Goal
+            </button>
+          </div>
+
+          {savingsGoals.length === 0 && (
+            <p className="text-slate-500 text-sm text-center py-6">No goals yet. Click &quot;+ Add Goal&quot; to get started.</p>
+          )}
+
+          <div className="space-y-4">
+            {savingsGoals.map((goal) => {
+              const remaining = Math.max(0, goal.target - goal.current);
+              const monthsToGoal = goal.monthlyContrib > 0 ? Math.ceil(remaining / goal.monthlyContrib) : Infinity;
+              const pct = goal.target > 0 ? Math.min(100, (goal.current / goal.target) * 100) : 0;
+              const projectedDate = monthsToGoal < Infinity
+                ? new Date(Date.now() + monthsToGoal * 30.44 * 86400000)
+                : null;
+
+              return (
+                <div key={goal.id} className="bg-slate-700/40 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <input
+                      type="text"
+                      value={goal.name}
+                      onChange={e => setSavingsGoals(gs => gs.map(g => g.id === goal.id ? { ...g, name: e.target.value } : g))}
+                      className="bg-transparent text-white font-semibold text-sm border-b border-transparent hover:border-slate-600 focus:border-emerald-400 focus:outline-none transition-colors flex-1"
+                    />
+                    <button
+                      onClick={() => setSavingsGoals(gs => gs.filter(g => g.id !== goal.id))}
+                      className="text-slate-600 hover:text-red-400 text-xs transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-400">{fmt(goal.current)} saved</span>
+                      <span className="text-slate-400">{fmt(goal.target)} goal</span>
+                    </div>
+                    <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          pct >= 100 ? 'bg-emerald-400' : 'bg-blue-400'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className={pct >= 100 ? 'text-emerald-400 font-medium' : 'text-blue-400'}>{fmtPct(pct)}</span>
+                      <span className="text-slate-500">
+                        {pct >= 100
+                          ? 'Goal reached!'
+                          : projectedDate
+                            ? `~${monthsToGoal} mo · ${projectedDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+                            : 'No contribution set'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Inputs */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-slate-500 text-[10px] uppercase tracking-wider">Target</label>
+                      <input
+                        type="number"
+                        value={goal.target}
+                        min={0}
+                        step={500}
+                        onChange={e => setSavingsGoals(gs => gs.map(g => g.id === goal.id ? { ...g, target: Number(e.target.value) } : g))}
+                        className="w-full bg-slate-700/60 border border-slate-600 rounded-lg py-1.5 px-2 text-white text-xs focus:outline-none focus:border-emerald-400 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 text-[10px] uppercase tracking-wider">Saved</label>
+                      <input
+                        type="number"
+                        value={goal.current}
+                        min={0}
+                        step={100}
+                        onChange={e => setSavingsGoals(gs => gs.map(g => g.id === goal.id ? { ...g, current: Number(e.target.value) } : g))}
+                        className="w-full bg-slate-700/60 border border-slate-600 rounded-lg py-1.5 px-2 text-white text-xs focus:outline-none focus:border-emerald-400 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-500 text-[10px] uppercase tracking-wider">Monthly</label>
+                      <input
+                        type="number"
+                        value={goal.monthlyContrib}
+                        min={0}
+                        step={25}
+                        onChange={e => setSavingsGoals(gs => gs.map(g => g.id === goal.id ? { ...g, monthlyContrib: Number(e.target.value) } : g))}
+                        className="w-full bg-slate-700/60 border border-slate-600 rounded-lg py-1.5 px-2 text-white text-xs focus:outline-none focus:border-emerald-400 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary */}
+          {savingsGoals.length > 0 && (
+            <div className="flex flex-wrap gap-6 pt-2 border-t border-slate-700/60">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Total Goal Amount</p>
+                <p className="text-white font-bold">{fmt(savingsGoals.reduce((s, g) => s + g.target, 0))}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Total Saved</p>
+                <p className="text-emerald-400 font-bold">{fmt(savingsGoals.reduce((s, g) => s + g.current, 0))}</p>
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wider">Monthly Toward Goals</p>
+                <p className="text-blue-400 font-bold">{fmt(savingsGoals.reduce((s, g) => s + g.monthlyContrib, 0))}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
