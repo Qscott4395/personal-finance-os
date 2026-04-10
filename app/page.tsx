@@ -1149,11 +1149,13 @@ export default function Page() {
               <p className="text-slate-500 text-[10px] uppercase tracking-wider">Working Effective Rate</p>
               <p className="text-red-400 font-bold text-lg">{fmtPct(taxComparison.workingEffective)}</p>
               <p className="text-slate-500 text-xs">On {fmt(salary)} salary</p>
+              <p className="text-slate-600 text-[10px] mt-1">% of your salary going to federal income tax while working</p>
             </div>
             <div className="bg-slate-700/40 rounded-lg p-4">
               <p className="text-slate-500 text-[10px] uppercase tracking-wider">Retirement Effective Rate</p>
               <p className="text-emerald-400 font-bold text-lg">{fmtPct(taxComparison.retirementEffective)}</p>
               <p className="text-slate-500 text-xs">On {fmt(retirementWaterfall[0]?.totalGross ?? 0)} income</p>
+              <p className="text-slate-600 text-[10px] mt-1">% of your first-year retirement income going to federal tax (Roth + cash are tax-free)</p>
             </div>
             <div className="bg-slate-700/40 rounded-lg p-4">
               <p className="text-slate-500 text-[10px] uppercase tracking-wider">Tax Savings</p>
@@ -1161,6 +1163,7 @@ export default function Page() {
                 {taxComparison.savings > 0 ? '-' : '+'}{fmtPct(Math.abs(taxComparison.savings))}
               </p>
               <p className="text-slate-500 text-xs">effective rate reduction</p>
+              <p className="text-slate-600 text-[10px] mt-1">How much lower your tax rate is in retirement vs working years</p>
             </div>
           </div>
         </div>
