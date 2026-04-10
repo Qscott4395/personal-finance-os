@@ -93,7 +93,8 @@ export function useFinanceState() {
   const [withdrawalRate,   setWithdrawalRate]   = useState(4);
   const [retReturnRate,    setRetReturnRate]    = useState(5);
   const [targetConfidence, setTargetConfidence] = useState(95);
-  const [retDuration,      setRetDuration]      = useState(30);
+  const [planThroughAge,   setPlanThroughAge]   = useState(95);
+  const retDuration = Math.max(5, planThroughAge - retirementAge);
   const [socialSecurityMo, setSocialSecurityMo] = useState(0);
   const [pensionMo,        setPensionMo]        = useState(0);
   const [showReal,          setShowReal]          = useState(false);
@@ -385,7 +386,8 @@ export function useFinanceState() {
     withdrawalRate, setWithdrawalRate,
     retReturnRate, setRetReturnRate,
     targetConfidence, setTargetConfidence,
-    retDuration, setRetDuration,
+    retDuration,
+    planThroughAge, setPlanThroughAge,
     socialSecurityMo, setSocialSecurityMo,
     pensionMo, setPensionMo,
     showReal, setShowReal,

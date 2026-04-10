@@ -181,7 +181,8 @@ export default function Page() {
             withdrawalRate={s.withdrawalRate} setWithdrawalRate={s.setWithdrawalRate}
             retReturnRate={s.retReturnRate} setRetReturnRate={s.setRetReturnRate}
             targetConfidence={s.targetConfidence} setTargetConfidence={s.setTargetConfidence}
-            retDuration={s.retDuration} setRetDuration={s.setRetDuration}
+            retDuration={s.retDuration}
+            planThroughAge={s.planThroughAge} setPlanThroughAge={s.setPlanThroughAge}
             socialSecurityMo={s.socialSecurityMo} setSocialSecurityMo={s.setSocialSecurityMo}
             pensionMo={s.pensionMo} setPensionMo={s.setPensionMo}
             projection={s.projection}

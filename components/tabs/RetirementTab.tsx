@@ -12,7 +12,8 @@ type Props = Pick<FinanceState,
   | 'withdrawalRate' | 'setWithdrawalRate'
   | 'retReturnRate' | 'setRetReturnRate'
   | 'targetConfidence' | 'setTargetConfidence'
-  | 'retDuration' | 'setRetDuration'
+  | 'retDuration'
+  | 'planThroughAge' | 'setPlanThroughAge'
   | 'socialSecurityMo' | 'setSocialSecurityMo'
   | 'pensionMo' | 'setPensionMo'
   | 'projection'
@@ -33,7 +34,8 @@ export default function RetirementTab(props: Props) {
     withdrawalRate, setWithdrawalRate,
     retReturnRate, setRetReturnRate,
     targetConfidence, setTargetConfidence,
-    retDuration, setRetDuration,
+    retDuration,
+    planThroughAge, setPlanThroughAge,
     socialSecurityMo, setSocialSecurityMo,
     pensionMo, setPensionMo,
     projection,
@@ -142,7 +144,7 @@ export default function RetirementTab(props: Props) {
       {(() => {
         const lastYear = retirementWaterfall[retirementWaterfall.length - 1];
         if (!lastYear) return null;
-        const deathAge = retirementAge + retDuration;
+        const deathAge = planThroughAge;
         const estateTotal = lastYear.remainingTotal;
         const rothEstate = lastYear.remainingRoth;
         const k401Estate = lastYear.remaining401k;
@@ -390,10 +392,10 @@ export default function RetirementTab(props: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
           <Slider
-            label="Retirement Duration"
-            value={retDuration} min={15} max={40} step={5}
-            onChange={setRetDuration}
-            display={`${retDuration} years`}
+            label="Plan Through Age"
+            value={planThroughAge} min={70} max={100} step={1}
+            onChange={setPlanThroughAge}
+            display={`Age ${planThroughAge} (${retDuration} yrs)`}
           />
           <div>
             <Slider
