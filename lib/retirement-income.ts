@@ -13,6 +13,12 @@ export interface RetirementYearIncome {
   totalGross: number;
   estimatedTax: number;
   totalNet: number;
+  // Remaining balances after this year's withdrawal + growth
+  remaining401k: number;
+  remainingRoth: number;
+  remainingBrokerage: number;
+  remainingCash: number;
+  remainingTotal: number;
 }
 
 export interface TaxComparison {
@@ -141,6 +147,13 @@ export function buildRetirementIncomeWaterfall(params: {
 
     const totalGross = ssAnnual + pensionAnnual + brokerageW + k401W + rothW + cashW;
 
+    // Grow remaining balances
+    bal401k *= (1 + retReturn);
+    balRoth *= (1 + retReturn);
+    balBrokerage *= (1 + retReturn);
+    // Cash grows at a lower rate (approximate savings rate)
+    balCash *= (1 + Math.min(retReturn, 0.03));
+
     data.push({
       age,
       socialSecurity: Math.round(ssAnnual),
@@ -152,14 +165,12 @@ export function buildRetirementIncomeWaterfall(params: {
       totalGross: Math.round(totalGross),
       estimatedTax: Math.round(federalTax),
       totalNet: Math.round(totalGross - federalTax),
+      remaining401k: Math.round(Math.max(0, bal401k)),
+      remainingRoth: Math.round(Math.max(0, balRoth)),
+      remainingBrokerage: Math.round(Math.max(0, balBrokerage)),
+      remainingCash: Math.round(Math.max(0, balCash)),
+      remainingTotal: Math.round(Math.max(0, bal401k + balRoth + balBrokerage + balCash)),
     });
-
-    // Grow remaining balances
-    bal401k *= (1 + retReturn);
-    balRoth *= (1 + retReturn);
-    balBrokerage *= (1 + retReturn);
-    // Cash grows at a lower rate (approximate savings rate)
-    balCash *= (1 + Math.min(retReturn, 0.03));
 
     // Increase withdrawal need for inflation
     annualNeed *= (1 + inflation);

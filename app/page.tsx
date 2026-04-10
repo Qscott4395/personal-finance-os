@@ -1192,6 +1192,91 @@ export default function Page() {
           </div>
         </div>
 
+        {/* ── Estate / Legacy Value ── */}
+        {(() => {
+          const lastYear = retirementWaterfall[retirementWaterfall.length - 1];
+          if (!lastYear) return null;
+          const deathAge = retirementAge + retDuration;
+          const estateTotal = lastYear.remainingTotal;
+          const rothEstate = lastYear.remainingRoth;
+          const k401Estate = lastYear.remaining401k;
+          const brokerageEstate = lastYear.remainingBrokerage;
+          const cashEstate = lastYear.remainingCash;
+          // Tax estimates for heirs
+          const k401HeirTax = k401Estate * 0.22; // heirs pay ordinary income tax ~22%
+          const brokerageStepUp = 0; // stepped-up basis = no cap gains at death
+          const estateAfterTax = rothEstate + cashEstate + brokerageEstate + (k401Estate - k401HeirTax);
+          return (
+            <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+              <div>
+                <h2 className="text-base font-semibold text-white">Estate / Legacy Value</h2>
+                <p className="text-slate-400 text-sm">Remaining portfolio at age {deathAge} · what you leave behind</p>
+              </div>
+
+              {/* Hero stat */}
+              <div className="flex flex-wrap items-end gap-6">
+                <div>
+                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Portfolio at Age {deathAge}</p>
+                  <p className={`text-3xl font-bold tabular-nums ${estateTotal > 0 ? 'text-purple-400' : 'text-red-400'}`}>
+                    {estateTotal > 0 ? fmt(estateTotal) : 'Depleted'}
+                  </p>
+                  {estateTotal > 0 && (
+                    <p className="text-slate-500 text-xs mt-1">~{fmt(estateAfterTax)} after estimated heir taxes</p>
+                  )}
+                </div>
+                {estateTotal <= 0 && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2">
+                    <p className="text-red-400 text-sm">Portfolio depletes before age {deathAge}. Consider reducing withdrawal rate or retiring later.</p>
+                  </div>
+                )}
+              </div>
+
+              {estateTotal > 0 && (
+                <>
+                  {/* Per-bucket breakdown */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { label: '401(k)', value: k401Estate, color: 'text-blue-400', note: 'Heirs pay income tax (~22%)' },
+                      { label: 'Roth IRA', value: rothEstate, color: 'text-emerald-400', note: 'Tax-free to heirs' },
+                      { label: 'Brokerage', value: brokerageEstate, color: 'text-amber-400', note: 'Stepped-up basis at death' },
+                      { label: 'Cash', value: cashEstate, color: 'text-slate-300', note: 'No tax impact' },
+                    ].map(b => (
+                      <div key={b.label} className="bg-slate-700/40 rounded-lg p-3">
+                        <p className="text-slate-500 text-[10px] uppercase tracking-wider">{b.label}</p>
+                        <p className={`font-bold tabular-nums ${b.color}`}>{fmt(b.value)}</p>
+                        <p className="text-slate-600 text-[10px] mt-1">{b.note}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Heir tax breakdown */}
+                  <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Estimated Heir Tax Impact</p>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">401(k) heir income tax (~22% bracket)</span>
+                        <span className="text-red-400 tabular-nums">−{fmt(k401HeirTax)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Roth IRA (tax-free, no RMDs for heirs)</span>
+                        <span className="text-emerald-400 tabular-nums">$0</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Brokerage (stepped-up cost basis)</span>
+                        <span className="text-emerald-400 tabular-nums">$0</span>
+                      </div>
+                      <div className="flex justify-between border-t border-slate-600 pt-1.5 font-medium">
+                        <span className="text-white">After-tax estate value</span>
+                        <span className="text-purple-400 tabular-nums">{fmt(estateAfterTax)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Paycheck Timeline */}
         <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
