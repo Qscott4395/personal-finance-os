@@ -183,6 +183,7 @@ export default function Page() {
             targetConfidence={s.targetConfidence} setTargetConfidence={s.setTargetConfidence}
             retDuration={s.retDuration}
             planThroughAge={s.planThroughAge} setPlanThroughAge={s.setPlanThroughAge}
+            wantedRetIncome={s.wantedRetIncome} setWantedRetIncome={s.setWantedRetIncome}
             socialSecurityMo={s.socialSecurityMo} setSocialSecurityMo={s.setSocialSecurityMo}
             pensionMo={s.pensionMo} setPensionMo={s.setPensionMo}
             projection={s.projection}

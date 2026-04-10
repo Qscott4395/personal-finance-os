@@ -14,6 +14,7 @@ type Props = Pick<FinanceState,
   | 'targetConfidence' | 'setTargetConfidence'
   | 'retDuration'
   | 'planThroughAge' | 'setPlanThroughAge'
+  | 'wantedRetIncome' | 'setWantedRetIncome'
   | 'socialSecurityMo' | 'setSocialSecurityMo'
   | 'pensionMo' | 'setPensionMo'
   | 'projection'
@@ -36,6 +37,7 @@ export default function RetirementTab(props: Props) {
     targetConfidence, setTargetConfidence,
     retDuration,
     planThroughAge, setPlanThroughAge,
+    wantedRetIncome, setWantedRetIncome,
     socialSecurityMo, setSocialSecurityMo,
     pensionMo, setPensionMo,
     projection,
@@ -59,7 +61,11 @@ export default function RetirementTab(props: Props) {
           <p className="text-slate-400 text-sm">Income sources and tax-efficient withdrawal order</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 max-w-md">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+          <div>
+            <NumInput label="Desired Annual Income" value={wantedRetIncome} onChange={setWantedRetIncome} prefix="$" step={5000} />
+            <p className="text-slate-600 text-[10px] mt-1">How much you want to live on per year in retirement (today's dollars)</p>
+          </div>
           <NumInput label="Social Security (Monthly)" value={socialSecurityMo} onChange={setSocialSecurityMo} prefix="$" step={100} />
           <NumInput label="Pension (Monthly)" value={pensionMo} onChange={setPensionMo} prefix="$" step={100} />
         </div>
