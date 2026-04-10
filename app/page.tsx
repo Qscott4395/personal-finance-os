@@ -14,8 +14,9 @@ import {
   getCurrentAllocation, getTargetAllocation, calculateDrift,
   projectAllocationByDecade, type RiskTolerance,
 } from '@/lib/allocation';
-import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert } from '@/components/retirement-ui';
+import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert, HeatMapGrid, MonteCarloHistogram } from '@/components/retirement-ui';
 import { calculateWithdrawal, buildComparisonTable } from '@/lib/withdrawal';
+import { buildTrinityHeatMap, maxSafeWithdrawalRate, runMonteCarloSimulation } from '@/lib/survivability';
 // import { buildMonthlySummary } from '@/lib/monthly-summary';
 import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
@@ -99,6 +100,8 @@ export default function Page() {
   const [riskTolerance,    setRiskTolerance]    = useState<RiskTolerance>('moderate');
   const [withdrawalRate,   setWithdrawalRate]   = useState(4);
   const [retReturnRate,    setRetReturnRate]    = useState(5);
+  const [targetConfidence, setTargetConfidence] = useState(95);
+  const [retDuration,      setRetDuration]      = useState(30);
   const [showReal,          setShowReal]          = useState(false);
   const [showBands,         setShowBands]         = useState(true);
 
@@ -206,6 +209,26 @@ export default function Page() {
   const comparisonTable = useMemo(
     () => buildComparisonTable(projection.finalValue, retReturnRate, inflationRate, retirementAge),
     [projection.finalValue, retReturnRate, inflationRate, retirementAge],
+  );
+
+  // ── Derived: Trinity Study & Monte Carlo ───────────────────────────────────────
+  const trinityHeatMap = useMemo(
+    () => buildTrinityHeatMap(retDuration),
+    [retDuration],
+  );
+  const maxSafeRate = useMemo(
+    () => maxSafeWithdrawalRate(targetAlloc.equity, retDuration, targetConfidence),
+    [targetAlloc.equity, retDuration, targetConfidence],
+  );
+  const monteCarloResult = useMemo(
+    () => runMonteCarloSimulation({
+      portfolioValue: projection.finalValue,
+      annualWithdrawal: projection.finalValue * (withdrawalRate / 100),
+      equityPct: targetAlloc.equity,
+      inflationRate: inflationRate / 100,
+      years: retDuration,
+    }),
+    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration],
   );
 
   // ── Derived: Inflation-Adjusted Projection Data ───────────────────────────────
@@ -972,6 +995,85 @@ export default function Page() {
                   : `Your portfolio lasts until age ${withdrawalResult.depletsAtAge}. ${
                       (withdrawalResult.depletsAtAge ?? 0) < 90 ? 'Consider reducing your withdrawal rate.' : ''
                     }`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Retirement Planning: Portfolio Survivability ── */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+          <div>
+            <h2 className="text-base font-semibold text-white">Portfolio Survivability</h2>
+            <p className="text-slate-400 text-sm">Trinity Study data + Monte Carlo simulation</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
+            <Slider
+              label="Retirement Duration"
+              value={retDuration} min={15} max={40} step={5}
+              onChange={setRetDuration}
+              display={`${retDuration} years`}
+            />
+            <Slider
+              label="Target Confidence"
+              value={targetConfidence} min={80} max={99} step={1}
+              onChange={setTargetConfidence}
+              display={`${targetConfidence}%`}
+            />
+            <div className="flex flex-col justify-end">
+              <p className="text-slate-400 text-xs mb-1">Max Safe Withdrawal Rate</p>
+              <p className="text-emerald-400 text-2xl font-bold">{maxSafeRate}%</p>
+              <p className="text-slate-500 text-[10px]">for {targetConfidence}% confidence over {retDuration} years</p>
+            </div>
+          </div>
+
+          {/* Trinity Study Heat Map */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-3">
+              Historical Success Rates ({retDuration}-Year Horizon)
+            </p>
+            <HeatMapGrid
+              data={trinityHeatMap}
+              rates={[3, 3.5, 4, 4.5, 5, 5.5, 6]}
+              allocations={[0, 25, 50, 75, 100]}
+              currentRate={withdrawalRate}
+              currentAlloc={targetAlloc.equity}
+            />
+            <div className="flex gap-3 mt-2 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-emerald-500/60" /> &gt;90%</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-yellow-500/40" /> 70-90%</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-red-500/40" /> &lt;60%</span>
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* Monte Carlo Simulation */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-3">
+              Monte Carlo Simulation (10,000 Runs)
+            </p>
+            <MonteCarloHistogram result={monteCarloResult} loading={false} retirementAge={retirementAge} />
+          </div>
+
+          {/* Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className={`text-sm leading-relaxed ${
+                monteCarloResult.successRate >= 90 ? 'text-emerald-400' : monteCarloResult.successRate >= 75 ? 'text-amber-400' : 'text-red-400'
+              }`}>
+                Your <strong>{withdrawalRate}%</strong> withdrawal rate has a <strong>{monteCarloResult.successRate}%</strong> simulated success rate.
+              </p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-blue-400 text-sm leading-relaxed">
+                Max safe rate for <strong>{targetConfidence}%</strong> confidence: <strong>{maxSafeRate}%</strong> ({fmt(projection.finalValue * maxSafeRate / 100)}/yr).
+              </p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-purple-400 text-sm leading-relaxed">
+                Median ending balance: <strong>{fmt(monteCarloResult.medianEndingBalance)}</strong>
+                {monteCarloResult.medianEndingBalance > projection.finalValue && ' — your portfolio likely grows in retirement.'}
               </p>
             </div>
           </div>

@@ -1,8 +1,9 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { fmt, fmtPct } from '@/lib/formatters';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { fmt, fmtPct, fmtShort } from '@/lib/formatters';
 import type { RiskTolerance, DriftResult } from '@/lib/allocation';
+import type { TrinityResult, MonteCarloResult } from '@/lib/survivability';
 
 // ─── Risk Tolerance Toggle ───────────────────────────────────────────────────
 
@@ -145,6 +146,143 @@ export function RebalancingAlert({ drift }: { drift: DriftResult }) {
             </span>
           </p>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Trinity Study Heat Map ──────────────────────────────────────────────────
+
+function getHeatColor(rate: number): string {
+  if (rate >= 95) return 'bg-emerald-500/60';
+  if (rate >= 90) return 'bg-emerald-500/40';
+  if (rate >= 80) return 'bg-lime-500/40';
+  if (rate >= 70) return 'bg-yellow-500/40';
+  if (rate >= 60) return 'bg-amber-500/40';
+  if (rate >= 50) return 'bg-orange-500/40';
+  return 'bg-red-500/40';
+}
+
+export function HeatMapGrid({
+  data, rates, allocations, currentRate, currentAlloc,
+}: {
+  data: TrinityResult[];
+  rates: number[];
+  allocations: number[];
+  currentRate?: number;
+  currentAlloc?: number;
+}) {
+  const lookup = new Map<string, number>();
+  for (const d of data) {
+    lookup.set(`${d.withdrawalRate}-${d.equityPct}`, d.successRate);
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-xs">
+        <thead>
+          <tr>
+            <th className="py-1.5 px-2 text-slate-500 text-left font-medium">Rate / Equity</th>
+            {allocations.map(a => (
+              <th key={a} className={`py-1.5 px-3 text-center font-medium ${
+                currentAlloc !== undefined && Math.abs(a - currentAlloc) < 13 ? 'text-purple-400' : 'text-slate-500'
+              }`}>
+                {a}%
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rates.map(r => (
+            <tr key={r}>
+              <td className={`py-1.5 px-2 font-medium ${
+                currentRate !== undefined && Math.abs(r - currentRate) < 0.26 ? 'text-purple-400' : 'text-slate-400'
+              }`}>
+                {r}%
+              </td>
+              {allocations.map(a => {
+                const sr = lookup.get(`${r}-${a}`) ?? 0;
+                const isHighlight = currentRate !== undefined && currentAlloc !== undefined
+                  && Math.abs(r - currentRate) < 0.26 && Math.abs(a - currentAlloc) < 13;
+                return (
+                  <td key={a} className={`py-1.5 px-3 text-center tabular-nums rounded ${getHeatColor(sr)} ${
+                    isHighlight ? 'ring-1 ring-purple-400' : ''
+                  }`}>
+                    <span className="text-white font-medium">{sr}%</span>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Monte Carlo Histogram ───────────────────────────────────────────────────
+
+export function MonteCarloHistogram({
+  result, loading, retirementAge,
+}: {
+  result: MonteCarloResult | null;
+  loading: boolean;
+  retirementAge: number;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[200px]">
+        <p className="text-slate-500 text-sm animate-pulse">Running 10,000 simulations...</p>
+      </div>
+    );
+  }
+  if (!result) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <span className={`text-2xl font-bold ${
+          result.successRate >= 90 ? 'text-emerald-400' : result.successRate >= 75 ? 'text-amber-400' : 'text-red-400'
+        }`}>
+          {result.successRate}%
+        </span>
+        <span className="text-slate-400 text-sm">success rate across 10,000 simulations</span>
+      </div>
+
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={result.histogram} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <XAxis dataKey="binLabel" tick={{ fill: '#64748b', fontSize: 9 }} axisLine={false} tickLine={false} interval={0} angle={-30} textAnchor="end" height={40} />
+          <YAxis hide />
+          <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+            {result.histogram.map((entry, i) => (
+              <Cell key={i} fill={entry.isFailure ? '#f87171' : '#60a5fa'} fillOpacity={0.7} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div>
+          <p className="text-slate-500 uppercase tracking-wider">Median Ending</p>
+          <p className="text-white font-semibold">{fmt(result.medianEndingBalance)}</p>
+        </div>
+        <div>
+          <p className="text-slate-500 uppercase tracking-wider">10th Percentile</p>
+          <p className="text-slate-300 font-semibold">{fmt(result.percentiles.p10)}</p>
+        </div>
+        {result.medianFailureAge !== null && (
+          <div>
+            <p className="text-slate-500 uppercase tracking-wider">Median Failure Age</p>
+            <p className="text-red-400 font-semibold">Age {retirementAge + result.medianFailureAge}</p>
+          </div>
+        )}
+        {result.worstCaseFailureAge !== null && (
+          <div>
+            <p className="text-slate-500 uppercase tracking-wider">Worst Failure</p>
+            <p className="text-red-400 font-semibold">Age {retirementAge + result.worstCaseFailureAge}</p>
+          </div>
+        )}
       </div>
     </div>
   );
