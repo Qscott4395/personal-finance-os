@@ -916,118 +916,6 @@ export default function Page() {
           </div>
         </div>
 
-        {/* ── Retirement Planning: Withdrawal Rate Modeling ── */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
-          <div>
-            <h2 className="text-base font-semibold text-white">Withdrawal Rate Modeling</h2>
-            <p className="text-slate-400 text-sm">How long will your portfolio last in retirement?</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl">
-            <Slider
-              label="Withdrawal Rate"
-              value={withdrawalRate} min={2} max={8} step={0.25}
-              onChange={setWithdrawalRate}
-              display={`${withdrawalRate}%`}
-            />
-            <Slider
-              label="Retirement Return Rate"
-              value={retReturnRate} min={1} max={10} step={0.5}
-              onChange={setRetReturnRate}
-              display={`${retReturnRate}%`}
-            />
-          </div>
-
-          {/* Key metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <SummaryCard
-              title="Annual Withdrawal"
-              value={fmt(withdrawalResult.annualWithdrawal)}
-              sub={`${fmt(withdrawalResult.monthlyWithdrawal)} / month`}
-              accent="text-blue-400"
-            />
-            <SummaryCard
-              title="Portfolio at Retirement"
-              value={fmt(projection.finalValue)}
-              sub={`At age ${retirementAge}`}
-              accent="text-purple-400"
-            />
-            <SummaryCard
-              title="Portfolio Lasts"
-              value={withdrawalResult.portfolioLongevityYears === Infinity ? 'Forever' : `${withdrawalResult.portfolioLongevityYears} years`}
-              sub={withdrawalResult.depletsAtAge ? `Depletes at age ${withdrawalResult.depletsAtAge}` : 'Never depletes'}
-              accent={withdrawalResult.portfolioLongevityYears === Infinity || withdrawalResult.portfolioLongevityYears > 35 ? 'text-emerald-400' : withdrawalResult.portfolioLongevityYears > 25 ? 'text-amber-400' : 'text-red-400'}
-            />
-            <SummaryCard
-              title="Withdrawal Rate"
-              value={`${withdrawalRate}%`}
-              sub={withdrawalRate <= 4 ? 'Within safe range' : 'Above traditional 4% rule'}
-              accent={withdrawalRate <= 4 ? 'text-emerald-400' : 'text-amber-400'}
-            />
-          </div>
-
-          {/* Comparison table */}
-          <div>
-            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">Withdrawal Rate Comparison</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
-                    <th className="text-left py-2 px-3 font-medium">Rate</th>
-                    <th className="text-right py-2 px-3 font-medium">Annual</th>
-                    <th className="text-right py-2 px-3 font-medium">Monthly</th>
-                    <th className="text-right py-2 px-3 font-medium">Years Lasting</th>
-                    <th className="text-right py-2 px-3 font-medium">Depletes At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparisonTable.map(row => (
-                    <tr
-                      key={row.rate}
-                      className={`border-b border-slate-700/40 ${
-                        row.rate === withdrawalRate ? 'bg-purple-500/10' : 'hover:bg-slate-700/20'
-                      }`}
-                    >
-                      <td className={`py-2 px-3 font-medium ${row.rate === withdrawalRate ? 'text-purple-400' : 'text-slate-300'}`}>
-                        {row.rate}%
-                        {row.rate === withdrawalRate && <span className="text-[10px] text-purple-500 ml-1">SELECTED</span>}
-                      </td>
-                      <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(row.annual)}</td>
-                      <td className="py-2 px-3 text-right text-slate-300 tabular-nums">{fmt(row.monthly)}</td>
-                      <td className={`py-2 px-3 text-right font-medium tabular-nums ${
-                        row.yearsLasting === Infinity ? 'text-emerald-400' : row.yearsLasting > 30 ? 'text-emerald-400' : row.yearsLasting > 20 ? 'text-amber-400' : 'text-red-400'
-                      }`}>
-                        {row.yearsLasting === Infinity ? 'Forever' : `${row.yearsLasting} yrs`}
-                      </td>
-                      <td className="py-2 px-3 text-right text-slate-400 tabular-nums">
-                        {row.depletsAtAge ? `Age ${row.depletsAtAge}` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Insights */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-slate-700/40 rounded-lg p-4">
-              <p className="text-emerald-400 text-sm leading-relaxed">
-                At <strong>{withdrawalRate}%</strong>, you can withdraw <strong>{fmt(withdrawalResult.monthlyWithdrawal)}/mo</strong> starting at age {retirementAge}.
-              </p>
-            </div>
-            <div className="bg-slate-700/40 rounded-lg p-4">
-              <p className={`text-sm leading-relaxed ${withdrawalResult.portfolioLongevityYears === Infinity || withdrawalResult.portfolioLongevityYears > 35 ? 'text-blue-400' : 'text-amber-400'}`}>
-                {withdrawalResult.portfolioLongevityYears === Infinity
-                  ? 'Your portfolio grows faster than withdrawals — it never runs out.'
-                  : `Your portfolio lasts until age ${withdrawalResult.depletsAtAge}. ${
-                      (withdrawalResult.depletsAtAge ?? 0) < 90 ? 'Consider reducing your withdrawal rate.' : ''
-                    }`}
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* ── Retirement Planning: Portfolio Survivability ── */}
         <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
           <div>
@@ -1276,6 +1164,118 @@ export default function Page() {
             </div>
           );
         })()}
+
+        {/* ── Retirement Planning: Withdrawal Rate Modeling ── */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+          <div>
+            <h2 className="text-base font-semibold text-white">Withdrawal Rate Modeling</h2>
+            <p className="text-slate-400 text-sm">How long will your portfolio last in retirement?</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl">
+            <Slider
+              label="Withdrawal Rate"
+              value={withdrawalRate} min={2} max={8} step={0.25}
+              onChange={setWithdrawalRate}
+              display={`${withdrawalRate}%`}
+            />
+            <Slider
+              label="Retirement Return Rate"
+              value={retReturnRate} min={1} max={10} step={0.5}
+              onChange={setRetReturnRate}
+              display={`${retReturnRate}%`}
+            />
+          </div>
+
+          {/* Key metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="Annual Withdrawal"
+              value={fmt(withdrawalResult.annualWithdrawal)}
+              sub={`${fmt(withdrawalResult.monthlyWithdrawal)} / month`}
+              accent="text-blue-400"
+            />
+            <SummaryCard
+              title="Portfolio at Retirement"
+              value={fmt(projection.finalValue)}
+              sub={`At age ${retirementAge}`}
+              accent="text-purple-400"
+            />
+            <SummaryCard
+              title="Portfolio Lasts"
+              value={withdrawalResult.portfolioLongevityYears === Infinity ? 'Forever' : `${withdrawalResult.portfolioLongevityYears} years`}
+              sub={withdrawalResult.depletsAtAge ? `Depletes at age ${withdrawalResult.depletsAtAge}` : 'Never depletes'}
+              accent={withdrawalResult.portfolioLongevityYears === Infinity || withdrawalResult.portfolioLongevityYears > 35 ? 'text-emerald-400' : withdrawalResult.portfolioLongevityYears > 25 ? 'text-amber-400' : 'text-red-400'}
+            />
+            <SummaryCard
+              title="Withdrawal Rate"
+              value={`${withdrawalRate}%`}
+              sub={withdrawalRate <= 4 ? 'Within safe range' : 'Above traditional 4% rule'}
+              accent={withdrawalRate <= 4 ? 'text-emerald-400' : 'text-amber-400'}
+            />
+          </div>
+
+          {/* Comparison table */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">Withdrawal Rate Comparison</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                    <th className="text-left py-2 px-3 font-medium">Rate</th>
+                    <th className="text-right py-2 px-3 font-medium">Annual</th>
+                    <th className="text-right py-2 px-3 font-medium">Monthly</th>
+                    <th className="text-right py-2 px-3 font-medium">Years Lasting</th>
+                    <th className="text-right py-2 px-3 font-medium">Depletes At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonTable.map(row => (
+                    <tr
+                      key={row.rate}
+                      className={`border-b border-slate-700/40 ${
+                        row.rate === withdrawalRate ? 'bg-purple-500/10' : 'hover:bg-slate-700/20'
+                      }`}
+                    >
+                      <td className={`py-2 px-3 font-medium ${row.rate === withdrawalRate ? 'text-purple-400' : 'text-slate-300'}`}>
+                        {row.rate}%
+                        {row.rate === withdrawalRate && <span className="text-[10px] text-purple-500 ml-1">SELECTED</span>}
+                      </td>
+                      <td className="py-2 px-3 text-right text-white tabular-nums">{fmt(row.annual)}</td>
+                      <td className="py-2 px-3 text-right text-slate-300 tabular-nums">{fmt(row.monthly)}</td>
+                      <td className={`py-2 px-3 text-right font-medium tabular-nums ${
+                        row.yearsLasting === Infinity ? 'text-emerald-400' : row.yearsLasting > 30 ? 'text-emerald-400' : row.yearsLasting > 20 ? 'text-amber-400' : 'text-red-400'
+                      }`}>
+                        {row.yearsLasting === Infinity ? 'Forever' : `${row.yearsLasting} yrs`}
+                      </td>
+                      <td className="py-2 px-3 text-right text-slate-400 tabular-nums">
+                        {row.depletsAtAge ? `Age ${row.depletsAtAge}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-emerald-400 text-sm leading-relaxed">
+                At <strong>{withdrawalRate}%</strong>, you can withdraw <strong>{fmt(withdrawalResult.monthlyWithdrawal)}/mo</strong> starting at age {retirementAge}.
+              </p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className={`text-sm leading-relaxed ${withdrawalResult.portfolioLongevityYears === Infinity || withdrawalResult.portfolioLongevityYears > 35 ? 'text-blue-400' : 'text-amber-400'}`}>
+                {withdrawalResult.portfolioLongevityYears === Infinity
+                  ? 'Your portfolio grows faster than withdrawals — it never runs out.'
+                  : `Your portfolio lasts until age ${withdrawalResult.depletsAtAge}. ${
+                      (withdrawalResult.depletsAtAge ?? 0) < 90 ? 'Consider reducing your withdrawal rate.' : ''
+                    }`}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Paycheck Timeline */}
         <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
