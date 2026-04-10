@@ -30,6 +30,7 @@ export default function Page() {
   const [employerMatchRate,setEmployerMatchRate] = useState(100);
   const [employerMatchCap, setEmployerMatchCap] = useState(4);
   const [monthlyMedical,   setMonthlyMedical]   = useState(200);
+  const [firstPayDate,     setFirstPayDate]     = useState('2026-01-09');
 
   // ── Expenses — Housing ────────────────────────────────────────────────────────
   const [rent,          setRent]          = useState(1_500);
@@ -143,8 +144,8 @@ export default function Page() {
 
   // ── Derived: Paycheck Timeline ────────────────────────────────────────────────
   const timeline = useMemo(
-    () => buildPaycheckTimeline(tax, paySchedule),
-    [tax, paySchedule],
+    () => buildPaycheckTimeline(tax, paySchedule, firstPayDate),
+    [tax, paySchedule, firstPayDate],
   );
 
   // ── Chart Data ───────────────────────────────────────────────────────────────
@@ -641,7 +642,17 @@ export default function Page() {
                 {paySchedule === 26 ? 'Biweekly (26 checks/yr)' : 'Semimonthly (24 checks/yr)'} · 2025 tax year
               </p>
             </div>
-            <div className="flex gap-6 text-right">
+            <div className="flex flex-wrap gap-6 items-end text-right">
+              <div className="text-left">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider mb-1.5">First Paycheck</label>
+                <input
+                  type="date"
+                  value={firstPayDate}
+                  onChange={e => setFirstPayDate(e.target.value)}
+                  className="bg-slate-700/60 border border-slate-600 rounded-lg py-1.5 px-3 text-white text-sm
+                    focus:outline-none focus:border-emerald-400 transition-colors"
+                />
+              </div>
               <div>
                 <p className="text-slate-500 text-xs uppercase tracking-wider">Current Check</p>
                 <p className="text-xl font-bold text-emerald-400">#{timeline.currentCheckNumber} <span className="text-slate-500 text-sm font-normal">of {timeline.totalChecks}</span></p>
