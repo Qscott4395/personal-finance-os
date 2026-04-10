@@ -1119,6 +1119,30 @@ export default function Page() {
             <NumInput label="Pension (Monthly)" value={pensionMo} onChange={setPensionMo} prefix="$" step={100} />
           </div>
 
+          {/* Starting portfolio summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+            <div className="sm:col-span-1 bg-slate-700/60 rounded-lg p-3 border border-purple-500/30">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Total at Age {retirementAge}</p>
+              <p className="text-purple-400 font-bold tabular-nums">{fmt(projection.finalValue)}</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-3">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">401(k)</p>
+              <p className="text-blue-400 font-semibold tabular-nums">{fmt(projection.final401k)}</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-3">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Roth IRA</p>
+              <p className="text-emerald-400 font-semibold tabular-nums">{fmt(projection.finalRoth)}</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-3">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Brokerage</p>
+              <p className="text-amber-400 font-semibold tabular-nums">{fmt(projection.finalBrokerage)}</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-3">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Cash</p>
+              <p className="text-slate-300 font-semibold tabular-nums">{fmt(projection.finalCash)}</p>
+            </div>
+          </div>
+
           {/* Waterfall chart */}
           <WaterfallChart data={retirementWaterfall} />
 
