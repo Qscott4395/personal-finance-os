@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, BarChart, Bar, Cell,
+  PieChart, Pie, Cell as PieCell,
 } from 'recharts';
 
 import { calculateTax, type State } from '@/lib/tax';
@@ -12,7 +13,7 @@ import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
 import {
   SummaryCard, NumInput, Slider, Label,
-  RowStat, Divider, ChartTooltip, BarTooltip,
+  RowStat, Divider, ChartTooltip, BarTooltip, CollapsibleCategory,
 } from '@/components/ui';
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -29,13 +30,43 @@ export default function Page() {
   const [employerMatchCap, setEmployerMatchCap] = useState(4);
   const [monthlyMedical,   setMonthlyMedical]   = useState(200);
 
-  // ── Expenses ─────────────────────────────────────────────────────────────────
-  const [housing,        setHousing]        = useState(1_800);
-  const [utilities,      setUtilities]      = useState(250);
-  const [food,           setFood]           = useState(600);
-  const [transportation, setTransportation] = useState(400);
-  const [debts,          setDebts]          = useState(500);
-  const [misc,           setMisc]           = useState(300);
+  // ── Expenses — Housing ────────────────────────────────────────────────────────
+  const [rent,          setRent]          = useState(1_500);
+  const [homeInsurance, setHomeInsurance] = useState(100);
+  const [homeMaint,     setHomeMaint]     = useState(200);
+  const housing = rent + homeInsurance + homeMaint;
+
+  // ── Expenses — Utilities ──────────────────────────────────────────────────────
+  const [electric,  setElectric]  = useState(80);
+  const [gasUtil,   setGasUtil]   = useState(60);
+  const [internet,  setInternet]  = useState(60);
+  const [phone,     setPhone]     = useState(50);
+  const utilities = electric + gasUtil + internet + phone;
+
+  // ── Expenses — Food ───────────────────────────────────────────────────────────
+  const [groceries, setGroceries] = useState(400);
+  const [dining,    setDining]    = useState(150);
+  const [coffee,    setCoffee]    = useState(50);
+  const food = groceries + dining + coffee;
+
+  // ── Expenses — Transportation ─────────────────────────────────────────────────
+  const [carPayment,    setCarPayment]    = useState(300);
+  const [gasFuel,       setGasFuel]       = useState(80);
+  const [autoInsurance, setAutoInsurance] = useState(120);
+  const transportation = carPayment + gasFuel + autoInsurance;
+
+  // ── Expenses — Debts ──────────────────────────────────────────────────────────
+  const [studentLoans, setStudentLoans] = useState(300);
+  const [creditCards,  setCreditCards]  = useState(150);
+  const [otherDebts,   setOtherDebts]   = useState(50);
+  const debts = studentLoans + creditCards + otherDebts;
+
+  // ── Expenses — Misc ───────────────────────────────────────────────────────────
+  const [entertainment,  setEntertainment]  = useState(100);
+  const [clothing,       setClothing]       = useState(80);
+  const [gym,            setGym]            = useState(50);
+  const [subscriptions,  setSubscriptions]  = useState(70);
+  const misc = entertainment + clothing + gym + subscriptions;
 
   // ── Investments & Projection ─────────────────────────────────────────────────
   const [rothAnnual,        setRothAnnual]        = useState(6_500);
@@ -325,38 +356,87 @@ export default function Page() {
           <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
             <h2 className="text-base font-semibold text-white">Monthly Expenses</h2>
 
-            <div className="grid grid-cols-2 gap-4">
-              <NumInput label="Housing"        value={housing}        onChange={setHousing}        prefix="$" step={50} />
-              <NumInput label="Utilities"      value={utilities}      onChange={setUtilities}      prefix="$" step={25} />
-              <NumInput label="Food"           value={food}           onChange={setFood}           prefix="$" step={50} />
-              <NumInput label="Transportation" value={transportation} onChange={setTransportation} prefix="$" step={50} />
-              <NumInput label="Debts"          value={debts}          onChange={setDebts}          prefix="$" step={50} />
-              <NumInput label="Miscellaneous"  value={misc}           onChange={setMisc}           prefix="$" step={50} />
+            {/* Pie chart + category breakdown side by side */}
+            <div className="flex gap-4 items-center">
+              <div className="shrink-0">
+                <ResponsiveContainer width={120} height={120}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Housing',        value: housing },
+                        { name: 'Utilities',      value: utilities },
+                        { name: 'Food',           value: food },
+                        { name: 'Transportation', value: transportation },
+                        { name: 'Debts',          value: debts },
+                        { name: 'Misc',           value: misc },
+                      ]}
+                      cx="50%" cy="50%" innerRadius={32} outerRadius={52}
+                      dataKey="value" stroke="none"
+                    >
+                      {['#34d399','#60a5fa','#f59e0b','#a78bfa','#f87171','#94a3b8'].map((color, i) => (
+                        <PieCell key={i} fill={color} fillOpacity={0.85} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v: number) => fmt(v)}
+                      contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+                      itemStyle={{ color: '#e2e8f0' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  { label: 'Housing',        value: housing,        color: 'bg-emerald-400' },
+                  { label: 'Utilities',      value: utilities,      color: 'bg-blue-400' },
+                  { label: 'Food',           value: food,           color: 'bg-amber-400' },
+                  { label: 'Transportation', value: transportation, color: 'bg-violet-400' },
+                  { label: 'Debts',          value: debts,          color: 'bg-red-400' },
+                  { label: 'Misc',           value: misc,           color: 'bg-slate-400' },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${row.color}`} />
+                    <span className="text-slate-400 truncate">{row.label}</span>
+                    <span className="text-white ml-auto">{fmt(row.value)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Expense Breakdown Bars */}
-            <div className="space-y-3">
-              {[
-                { label: 'Housing',        value: housing },
-                { label: 'Utilities',      value: utilities },
-                { label: 'Food',           value: food },
-                { label: 'Transportation', value: transportation },
-                { label: 'Debts',          value: debts },
-                { label: 'Miscellaneous',  value: misc },
-              ].map(row => (
-                <div key={row.label}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-slate-400">{row.label}</span>
-                    <span className="text-white">{fmt(row.value)}</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-400/70 rounded-full transition-all duration-300"
-                      style={{ width: `${totalExpenses > 0 ? (row.value / totalExpenses) * 100 : 0}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            {/* Subcategory groups */}
+            <div className="space-y-2">
+              <CollapsibleCategory label="Housing" total={housing} color="bg-emerald-400/70">
+                <NumInput label="Rent / Mortgage"   value={rent}          onChange={setRent}          prefix="$" step={50} />
+                <NumInput label="Home Insurance"    value={homeInsurance} onChange={setHomeInsurance} prefix="$" step={10} />
+                <NumInput label="Maintenance"       value={homeMaint}     onChange={setHomeMaint}     prefix="$" step={10} />
+              </CollapsibleCategory>
+              <CollapsibleCategory label="Utilities" total={utilities} color="bg-blue-400/70">
+                <NumInput label="Electric"  value={electric} onChange={setElectric} prefix="$" step={10} />
+                <NumInput label="Gas"       value={gasUtil}  onChange={setGasUtil}  prefix="$" step={10} />
+                <NumInput label="Internet"  value={internet} onChange={setInternet} prefix="$" step={5} />
+                <NumInput label="Phone"     value={phone}    onChange={setPhone}    prefix="$" step={5} />
+              </CollapsibleCategory>
+              <CollapsibleCategory label="Food" total={food} color="bg-amber-400/70">
+                <NumInput label="Groceries"   value={groceries} onChange={setGroceries} prefix="$" step={25} />
+                <NumInput label="Dining Out"  value={dining}    onChange={setDining}    prefix="$" step={25} />
+                <NumInput label="Coffee & Bars" value={coffee}  onChange={setCoffee}    prefix="$" step={10} />
+              </CollapsibleCategory>
+              <CollapsibleCategory label="Transportation" total={transportation} color="bg-violet-400/70">
+                <NumInput label="Car Payment"    value={carPayment}    onChange={setCarPayment}    prefix="$" step={25} />
+                <NumInput label="Gas & Fuel"     value={gasFuel}       onChange={setGasFuel}       prefix="$" step={10} />
+                <NumInput label="Auto Insurance" value={autoInsurance} onChange={setAutoInsurance} prefix="$" step={10} />
+              </CollapsibleCategory>
+              <CollapsibleCategory label="Debts" total={debts} color="bg-red-400/70">
+                <NumInput label="Student Loans" value={studentLoans} onChange={setStudentLoans} prefix="$" step={25} />
+                <NumInput label="Credit Cards"  value={creditCards}  onChange={setCreditCards}  prefix="$" step={25} />
+                <NumInput label="Other Loans"   value={otherDebts}   onChange={setOtherDebts}   prefix="$" step={25} />
+              </CollapsibleCategory>
+              <CollapsibleCategory label="Miscellaneous" total={misc} color="bg-slate-400/70">
+                <NumInput label="Entertainment"  value={entertainment} onChange={setEntertainment} prefix="$" step={10} />
+                <NumInput label="Clothing"       value={clothing}      onChange={setClothing}      prefix="$" step={10} />
+                <NumInput label="Health & Gym"   value={gym}           onChange={setGym}           prefix="$" step={10} />
+                <NumInput label="Subscriptions"  value={subscriptions} onChange={setSubscriptions} prefix="$" step={5} />
+              </CollapsibleCategory>
             </div>
 
             <Divider />

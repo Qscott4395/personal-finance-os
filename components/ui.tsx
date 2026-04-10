@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { fmt } from '@/lib/formatters';
 
 // ─── Layout Atoms ─────────────────────────────────────────────────────────────
@@ -103,6 +104,38 @@ export function Slider({
         <span className="text-slate-600 text-xs">{min}</span>
         <span className="text-slate-600 text-xs">{max}</span>
       </div>
+    </div>
+  );
+}
+
+// ─── Collapsible Category Group ───────────────────────────────────────────────
+
+export function CollapsibleCategory({
+  label, total, color = 'bg-emerald-400/70', children,
+}: {
+  label: string; total: number; color?: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between group"
+      >
+        <div className="flex items-center gap-2">
+          <span className={`text-slate-400 text-sm group-hover:text-white transition-colors`}>{label}</span>
+          <span className="text-slate-600 text-xs">{open ? '▲' : '▼'}</span>
+        </div>
+        <span className="text-white text-sm font-medium">{fmt(total)}</span>
+      </button>
+      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden mt-1 mb-1">
+        <div className={`h-full ${color} rounded-full transition-all duration-300`} style={{ width: '100%' }} />
+      </div>
+      {open && (
+        <div className="mt-2 mb-3 pl-3 border-l border-slate-700 space-y-3">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
