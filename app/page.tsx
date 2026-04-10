@@ -14,9 +14,10 @@ import {
   getCurrentAllocation, getTargetAllocation, calculateDrift,
   projectAllocationByDecade, type RiskTolerance,
 } from '@/lib/allocation';
-import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert, HeatMapGrid, MonteCarloHistogram } from '@/components/retirement-ui';
+import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert, HeatMapGrid, MonteCarloHistogram, WaterfallChart } from '@/components/retirement-ui';
 import { calculateWithdrawal, buildComparisonTable } from '@/lib/withdrawal';
 import { buildTrinityHeatMap, maxSafeWithdrawalRate, runMonteCarloSimulation } from '@/lib/survivability';
+import { buildRetirementIncomeWaterfall, compareWorkingVsRetirementTax } from '@/lib/retirement-income';
 // import { buildMonthlySummary } from '@/lib/monthly-summary';
 import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
@@ -102,6 +103,8 @@ export default function Page() {
   const [retReturnRate,    setRetReturnRate]    = useState(5);
   const [targetConfidence, setTargetConfidence] = useState(95);
   const [retDuration,      setRetDuration]      = useState(30);
+  const [socialSecurityMo, setSocialSecurityMo] = useState(0);
+  const [pensionMo,        setPensionMo]        = useState(0);
   const [showReal,          setShowReal]          = useState(false);
   const [showBands,         setShowBands]         = useState(true);
 
@@ -229,6 +232,31 @@ export default function Page() {
       years: retDuration,
     }),
     [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration],
+  );
+
+  // ── Derived: Retirement Income Waterfall ────────────────────────────────────────
+  const retirementWaterfall = useMemo(
+    () => buildRetirementIncomeWaterfall({
+      retirementAge,
+      socialSecurityMonthly: socialSecurityMo,
+      pensionMonthly: pensionMo,
+      balance401k: projection.final401k,
+      balanceRoth: projection.finalRoth,
+      balanceBrokerage: projection.finalBrokerage,
+      balanceCash: projection.finalCash,
+      withdrawalRate,
+      inflationRate,
+      retirementReturnRate: retReturnRate,
+      years: retDuration,
+    }),
+    [retirementAge, socialSecurityMo, pensionMo, projection, withdrawalRate, inflationRate, retReturnRate, retDuration],
+  );
+  const taxComparison = useMemo(
+    () => compareWorkingVsRetirementTax(
+      salary,
+      retirementWaterfall[0]?.totalGross ?? 0,
+    ),
+    [salary, retirementWaterfall],
   );
 
   // ── Derived: Inflation-Adjusted Projection Data ───────────────────────────────
@@ -1075,6 +1103,64 @@ export default function Page() {
                 Median ending balance: <strong>{fmt(monteCarloResult.medianEndingBalance)}</strong>
                 {monteCarloResult.medianEndingBalance > projection.finalValue && ' — your portfolio likely grows in retirement.'}
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Retirement Planning: Income Waterfall ── */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+          <div>
+            <h2 className="text-base font-semibold text-white">Retirement Income Waterfall</h2>
+            <p className="text-slate-400 text-sm">Income sources and tax-efficient withdrawal order</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 max-w-md">
+            <NumInput label="Social Security (Monthly)" value={socialSecurityMo} onChange={setSocialSecurityMo} prefix="$" step={100} />
+            <NumInput label="Pension (Monthly)" value={pensionMo} onChange={setPensionMo} prefix="$" step={100} />
+          </div>
+
+          {/* Waterfall chart */}
+          <WaterfallChart data={retirementWaterfall} />
+
+          {/* Withdrawal order explanation */}
+          <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">
+            <p className="text-slate-400 text-xs uppercase tracking-wider font-medium">Tax-Efficient Withdrawal Order</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { num: '1', label: 'Brokerage', note: 'Capital gains rate (15%)', color: 'text-amber-400' },
+                { num: '2', label: '401(k)', note: 'Ordinary income rate', color: 'text-blue-400' },
+                { num: '3', label: 'Cash', note: 'Buffer / emergency', color: 'text-slate-300' },
+                { num: '4', label: 'Roth IRA', note: 'Tax-free — save for last', color: 'text-emerald-400' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2 border border-slate-700">
+                  <span className="text-purple-400 font-bold text-sm">{item.num}</span>
+                  <div>
+                    <p className={`text-xs font-medium ${item.color}`}>{item.label}</p>
+                    <p className="text-slate-500 text-[10px]">{item.note}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tax comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Working Effective Rate</p>
+              <p className="text-red-400 font-bold text-lg">{fmtPct(taxComparison.workingEffective)}</p>
+              <p className="text-slate-500 text-xs">On {fmt(salary)} salary</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Retirement Effective Rate</p>
+              <p className="text-emerald-400 font-bold text-lg">{fmtPct(taxComparison.retirementEffective)}</p>
+              <p className="text-slate-500 text-xs">On {fmt(retirementWaterfall[0]?.totalGross ?? 0)} income</p>
+            </div>
+            <div className="bg-slate-700/40 rounded-lg p-4">
+              <p className="text-slate-500 text-[10px] uppercase tracking-wider">Tax Savings</p>
+              <p className={`font-bold text-lg ${taxComparison.savings > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {taxComparison.savings > 0 ? '-' : '+'}{fmtPct(Math.abs(taxComparison.savings))}
+              </p>
+              <p className="text-slate-500 text-xs">effective rate reduction</p>
             </div>
           </div>
         </div>

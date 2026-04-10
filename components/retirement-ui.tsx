@@ -1,9 +1,10 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { fmt, fmtPct, fmtShort } from '@/lib/formatters';
 import type { RiskTolerance, DriftResult } from '@/lib/allocation';
 import type { TrinityResult, MonteCarloResult } from '@/lib/survivability';
+import type { RetirementYearIncome } from '@/lib/retirement-income';
 
 // ─── Risk Tolerance Toggle ───────────────────────────────────────────────────
 
@@ -285,5 +286,58 @@ export function MonteCarloHistogram({
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Retirement Income Waterfall Chart ────────────────────────────────────────
+
+const WATERFALL_COLORS = {
+  socialSecurity: '#fb923c',
+  pension: '#f472b6',
+  k401: '#60a5fa',
+  roth: '#34d399',
+  brokerage: '#fbbf24',
+  cash: '#94a3b8',
+};
+
+export function WaterfallChart({ data }: { data: RetirementYearIncome[] }) {
+  if (data.length === 0) return null;
+
+  // Sample every 5 years to avoid overcrowding
+  const sampled = data.filter((_, i) => i % 5 === 0 || i === data.length - 1);
+
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={sampled} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+        <XAxis
+          dataKey="age"
+          tick={{ fill: '#64748b', fontSize: 11 }}
+          axisLine={false} tickLine={false}
+          label={{ value: 'Age', position: 'insideBottom', offset: -10, fill: '#64748b', fontSize: 12 }}
+        />
+        <YAxis
+          tick={{ fill: '#64748b', fontSize: 11 }}
+          tickFormatter={fmtShort}
+          width={55}
+          stroke="#334155"
+        />
+        <Tooltip
+          contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }}
+          itemStyle={{ color: '#e2e8f0' }}
+          formatter={(v: number) => fmt(v)}
+        />
+        <Legend
+          wrapperStyle={{ color: '#94a3b8', fontSize: '11px', paddingTop: '8px' }}
+          formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
+        />
+        <Bar dataKey="socialSecurity" stackId="1" fill={WATERFALL_COLORS.socialSecurity} name="Social Security" />
+        <Bar dataKey="pension" stackId="1" fill={WATERFALL_COLORS.pension} name="Pension" />
+        <Bar dataKey="k401Withdrawal" stackId="1" fill={WATERFALL_COLORS.k401} name="401(k)" />
+        <Bar dataKey="rothWithdrawal" stackId="1" fill={WATERFALL_COLORS.roth} name="Roth IRA" />
+        <Bar dataKey="brokerageWithdrawal" stackId="1" fill={WATERFALL_COLORS.brokerage} name="Brokerage" />
+        <Bar dataKey="cashWithdrawal" stackId="1" fill={WATERFALL_COLORS.cash} name="Cash" radius={[2, 2, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
