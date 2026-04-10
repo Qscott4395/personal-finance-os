@@ -818,6 +818,122 @@ export default function Page() {
           </div>
         </div>
 
+        {/* Tax Withholding Tracker */}
+        {(() => {
+          const pctThrough = timeline.totalChecks > 0 ? timeline.currentCheckNumber / timeline.totalChecks : 0;
+          const annualFederal = tax.federalTax;
+          const annualState = tax.stateTax;
+          const annualFICA = tax.totalFICA;
+          const annualTotalTax = annualFederal + annualState + annualFICA;
+
+          const ytdFederal = annualFederal * pctThrough;
+          const ytdState = annualState * pctThrough;
+          const ytdFICA = annualFICA * pctThrough;
+          const ytdTotal = ytdFederal + ytdState + ytdFICA;
+
+          const proRatedTarget = annualTotalTax * pctThrough;
+          const diff = ytdTotal - proRatedTarget; // positive = over-withheld
+          const yearEndDiff = annualTotalTax - annualTotalTax; // withholding = liability (no W-4 adjustment yet)
+
+          // Status based on pace: withheld vs where you should be
+          const federalPace = annualFederal > 0 ? (ytdFederal / (annualFederal * pctThrough || 1)) * 100 : 100;
+          const statePace = annualState > 0 ? (ytdState / (annualState * pctThrough || 1)) * 100 : 100;
+
+          const projectedRefund = ytdTotal / (pctThrough || 1) - annualTotalTax;
+          const refundStatus = projectedRefund > 50 ? 'over' : projectedRefund < -50 ? 'under' : 'on-track';
+
+          return (
+            <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-semibold text-white">Tax Withholding Tracker</h2>
+                  <p className="text-slate-400 text-sm">Are you on pace for your annual tax liability?</p>
+                </div>
+                <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                  refundStatus === 'over'
+                    ? 'bg-blue-500/20 border-blue-500/40 text-blue-400'
+                    : refundStatus === 'under'
+                      ? 'bg-red-500/20 border-red-500/40 text-red-400'
+                      : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                }`}>
+                  {refundStatus === 'over' ? 'Over-withheld' : refundStatus === 'under' ? 'Under-withheld' : 'On Track'}
+                </div>
+              </div>
+
+              {/* Federal progress */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-400">Federal Tax</span>
+                  <span className="text-slate-400">{fmt(ytdFederal)} of {fmt(annualFederal)}</span>
+                </div>
+                <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden relative">
+                  {/* Target marker */}
+                  <div className="absolute h-full w-0.5 bg-slate-400/50 z-10" style={{ left: `${pctThrough * 100}%` }} />
+                  <div
+                    className="h-full bg-red-400/70 rounded-full transition-all duration-500"
+                    style={{ width: `${annualFederal > 0 ? (ytdFederal / annualFederal) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-slate-600 text-[10px] mt-0.5">Target pace: {fmt(annualFederal * pctThrough)} by now</p>
+              </div>
+
+              {/* State progress */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-400">State Tax</span>
+                  <span className="text-slate-400">{fmt(ytdState)} of {fmt(annualState)}</span>
+                </div>
+                <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden relative">
+                  <div className="absolute h-full w-0.5 bg-slate-400/50 z-10" style={{ left: `${pctThrough * 100}%` }} />
+                  <div
+                    className="h-full bg-orange-400/70 rounded-full transition-all duration-500"
+                    style={{ width: `${annualState > 0 ? (ytdState / annualState) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-slate-600 text-[10px] mt-0.5">Target pace: {fmt(annualState * pctThrough)} by now</p>
+              </div>
+
+              {/* FICA progress */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-400">FICA (SS + Medicare)</span>
+                  <span className="text-slate-400">{fmt(ytdFICA)} of {fmt(annualFICA)}</span>
+                </div>
+                <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden relative">
+                  <div className="absolute h-full w-0.5 bg-slate-400/50 z-10" style={{ left: `${pctThrough * 100}%` }} />
+                  <div
+                    className="h-full bg-yellow-400/70 rounded-full transition-all duration-500"
+                    style={{ width: `${annualFICA > 0 ? (ytdFICA / annualFICA) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-slate-600 text-[10px] mt-0.5">Target pace: {fmt(annualFICA * pctThrough)} by now</p>
+              </div>
+
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-700/40 rounded-lg p-3">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">YTD Withheld</p>
+                  <p className="text-red-400 font-bold text-lg">{fmt(ytdTotal)}</p>
+                </div>
+                <div className="bg-slate-700/40 rounded-lg p-3">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Annual Liability</p>
+                  <p className="text-white font-bold text-lg">{fmt(annualTotalTax)}</p>
+                </div>
+                <div className="bg-slate-700/40 rounded-lg p-3">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Remaining</p>
+                  <p className="text-slate-300 font-bold text-lg">{fmt(annualTotalTax - ytdTotal)}</p>
+                </div>
+                <div className="bg-slate-700/40 rounded-lg p-3">
+                  <p className="text-slate-500 text-[10px] uppercase tracking-wider">Projected Year-End</p>
+                  <p className={`font-bold text-lg ${projectedRefund >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                    {projectedRefund >= 0 ? `+${fmt(projectedRefund)} refund` : `${fmt(Math.abs(projectedRefund))} owed`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Savings Goals */}
         <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-5">
           <div className="flex items-center justify-between">
