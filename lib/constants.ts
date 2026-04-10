@@ -18,4 +18,8 @@ export const CHART_COLORS = {
   brokerage:'#fbbf24',
   cash:     '#94a3b8',
   medical:  '#a78bfa',
+  equity:   '#60a5fa',
+  bonds:    '#a78bfa',
+  pension:  '#f472b6',
+  socialSec:'#fb923c',
 };

@@ -10,6 +10,11 @@ import {
 import { calculateTax, type State } from '@/lib/tax';
 import { calculateProjection } from '@/lib/projection';
 import { buildPaycheckTimeline } from '@/lib/paycheck-timeline';
+import {
+  getCurrentAllocation, getTargetAllocation, calculateDrift,
+  projectAllocationByDecade, type RiskTolerance,
+} from '@/lib/allocation';
+import { RiskToggle, AllocationDonut, TargetDonut, RebalancingAlert } from '@/components/retirement-ui';
 // import { buildMonthlySummary } from '@/lib/monthly-summary';
 import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
@@ -90,6 +95,7 @@ export default function Page() {
   const [cashRate,          setCashRate]          = useState(4.5);
   const [salaryGrowth,      setSalaryGrowth]      = useState(3);
   const [inflationRate,     setInflationRate]     = useState(3);
+  const [riskTolerance,    setRiskTolerance]    = useState<RiskTolerance>('moderate');
   const [showReal,          setShowReal]          = useState(false);
   const [showBands,         setShowBands]         = useState(true);
 
@@ -170,6 +176,24 @@ export default function Page() {
   const annualTrueSavings =
     tax.contribution401k + employerMatch + rothAnnual + brokerageAnnual + cashSavingsAnnual;
   const trueSavingsRate = salary > 0 ? (annualTrueSavings / salary) * 100 : 0;
+
+  // ── Derived: Asset Allocation ──────────────────────────────────────────────────
+  const currentAllocation = useMemo(
+    () => getCurrentAllocation(balance401k, balanceRoth, balanceBrokerage, balanceCash),
+    [balance401k, balanceRoth, balanceBrokerage, balanceCash],
+  );
+  const targetAlloc = useMemo(
+    () => getTargetAllocation(currentAge, riskTolerance),
+    [currentAge, riskTolerance],
+  );
+  const drift = useMemo(
+    () => calculateDrift(currentAllocation, targetAlloc),
+    [currentAllocation, targetAlloc],
+  );
+  const decadeProjection = useMemo(
+    () => projectAllocationByDecade(currentAge, retirementAge, riskTolerance),
+    [currentAge, retirementAge, riskTolerance],
+  );
 
   // ── Derived: Inflation-Adjusted Projection Data ───────────────────────────────
   const chartData = useMemo(() => {
@@ -751,6 +775,79 @@ export default function Page() {
                 {' '}—{' '}
                 <strong className="text-red-400">{fmt(projection.finalValue - projEarlier.finalValue)} less</strong>.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Retirement Planning: Asset Allocation ── */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-white">Asset Allocation</h2>
+              <p className="text-slate-400 text-sm">Current portfolio vs. age-based target</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-400 text-xs">Risk Tolerance</span>
+              <RiskToggle value={riskTolerance} onChange={setRiskTolerance} />
+            </div>
+          </div>
+
+          {/* Donut charts side by side */}
+          <div className="flex flex-wrap gap-8 justify-center">
+            <div>
+              <AllocationDonut
+                label="Current"
+                data={[
+                  { name: '401(k)', value: currentAllocation.k401, color: '#60a5fa' },
+                  { name: 'Roth IRA', value: currentAllocation.roth, color: '#34d399' },
+                  { name: 'Brokerage', value: currentAllocation.brokerage, color: '#fbbf24' },
+                  { name: 'Cash', value: currentAllocation.cash, color: '#94a3b8' },
+                ]}
+              />
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="flex justify-between gap-3"><span className="text-slate-400">401(k)</span><span className="text-white">{fmtPct(currentAllocation.pctK401)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-400">Roth IRA</span><span className="text-white">{fmtPct(currentAllocation.pctRoth)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-400">Brokerage</span><span className="text-white">{fmtPct(currentAllocation.pctBrokerage)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-400">Cash</span><span className="text-white">{fmtPct(currentAllocation.pctCash)}</span></div>
+              </div>
+            </div>
+            <div>
+              <TargetDonut label="Target" equity={targetAlloc.equity} bonds={targetAlloc.bonds} cash={targetAlloc.cash} />
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="flex justify-between gap-3"><span className="text-blue-400">Equity</span><span className="text-white">{fmtPct(targetAlloc.equity)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-violet-400">Bonds</span><span className="text-white">{fmtPct(targetAlloc.bonds)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-400">Cash</span><span className="text-white">{fmtPct(targetAlloc.cash)}</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rebalancing alert */}
+          <RebalancingAlert drift={drift} />
+
+          {/* Decade projection table */}
+          <div>
+            <p className="text-slate-500 text-xs uppercase tracking-wider font-medium mb-2">Target Allocation by Age</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
+                    <th className="text-left py-2 px-3 font-medium">Age</th>
+                    <th className="text-right py-2 px-3 font-medium">Equity</th>
+                    <th className="text-right py-2 px-3 font-medium">Bonds</th>
+                    <th className="text-right py-2 px-3 font-medium">Cash</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {decadeProjection.map(row => (
+                    <tr key={row.age} className={`border-b border-slate-700/40 ${row.age === Math.floor(currentAge / 10) * 10 ? 'bg-purple-500/10' : ''}`}>
+                      <td className="py-2 px-3 text-slate-300 font-medium">{row.age}</td>
+                      <td className="py-2 px-3 text-right text-blue-400">{fmtPct(row.equity)}</td>
+                      <td className="py-2 px-3 text-right text-violet-400">{fmtPct(row.bonds)}</td>
+                      <td className="py-2 px-3 text-right text-slate-400">{fmtPct(row.cash)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
