@@ -10,7 +10,7 @@ import {
 import { calculateTax, type State } from '@/lib/tax';
 import { calculateProjection } from '@/lib/projection';
 import { buildPaycheckTimeline } from '@/lib/paycheck-timeline';
-import { buildMonthlySummary } from '@/lib/monthly-summary';
+// import { buildMonthlySummary } from '@/lib/monthly-summary';
 import { STATES, CHART_COLORS as C } from '@/lib/constants';
 import { fmt, fmtShort, fmtPct } from '@/lib/formatters';
 import {
@@ -184,12 +184,6 @@ export default function Page() {
     [tax, paySchedule, firstPayDate],
   );
 
-  // ── Derived: Monthly Summary ──────────────────────────────────────────────────
-  const monthlySummary = useMemo(
-    () => buildMonthlySummary(tax, timeline.paychecks, totalExpenses),
-    [tax, timeline.paychecks, totalExpenses],
-  );
-
   // ── Chart Data ───────────────────────────────────────────────────────────────
   const incomeBarData = [
     { name: 'Federal',   value: Math.round(tax.federalTax        / paySchedule), fill: C.federal  },
@@ -227,7 +221,7 @@ export default function Page() {
             accent="text-emerald-400"
           />
           <SummaryCard
-            title="Monthly Surplus (Avg)"
+            title="Monthly Surplus"
             value={fmt(monthlySurplus)}
             sub={`True savings rate: ${fmtPct(trueSavingsRate)} of gross`}
             accent={monthlySurplus >= 0 ? 'text-emerald-400' : 'text-red-400'}
@@ -821,77 +815,6 @@ export default function Page() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* Monthly Net Summary */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700/60 p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-white">Monthly Cash Flow Summary</h2>
-            <p className="text-slate-400 text-sm">Jan – Dec · income, taxes, expenses, and cumulative savings</p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-slate-500 uppercase tracking-wider border-b border-slate-700">
-                  <th className="text-left py-2 px-2 font-medium">Month</th>
-                  <th className="text-center py-2 px-2 font-medium">Checks</th>
-                  <th className="text-right py-2 px-2 font-medium">Gross</th>
-                  <th className="text-right py-2 px-2 font-medium">Taxes</th>
-                  <th className="text-right py-2 px-2 font-medium">Deductions</th>
-                  <th className="text-right py-2 px-2 font-medium">Net Income</th>
-                  <th className="text-right py-2 px-2 font-medium">Expenses</th>
-                  <th className="text-right py-2 px-2 font-medium">Surplus</th>
-                  <th className="text-right py-2 px-2 font-medium">Cumulative</th>
-                </tr>
-              </thead>
-              <tbody>
-                {monthlySummary.map((row) => (
-                  <tr
-                    key={row.month}
-                    className={`border-b border-slate-700/40 transition-colors ${
-                      row.isCurrent
-                        ? 'bg-emerald-500/10 border-l-2 border-l-emerald-400'
-                        : 'hover:bg-slate-700/20'
-                    }`}
-                  >
-                    <td className={`py-2 px-2 font-medium ${row.isCurrent ? 'text-emerald-400' : 'text-slate-300'}`}>
-                      {row.month} {row.isCurrent && <span className="text-[10px] text-emerald-500 ml-1">NOW</span>}
-                    </td>
-                    <td className={`text-center py-2 px-2 tabular-nums ${row.checks >= 3 ? 'text-emerald-400 font-medium' : 'text-slate-500'}`}>
-                      {row.checks}{row.checks >= 3 && <span className="text-[10px] ml-0.5">★</span>}
-                    </td>
-                    <td className="text-right py-2 px-2 text-white tabular-nums">{fmt(row.grossIncome)}</td>
-                    <td className="text-right py-2 px-2 text-red-400 tabular-nums">({fmt(row.taxes)})</td>
-                    <td className="text-right py-2 px-2 text-blue-400 tabular-nums">({fmt(row.deductions)})</td>
-                    <td className="text-right py-2 px-2 text-emerald-400 tabular-nums">{fmt(row.netIncome)}</td>
-                    <td className="text-right py-2 px-2 text-slate-400 tabular-nums">({fmt(row.expenses)})</td>
-                    <td className={`text-right py-2 px-2 font-medium tabular-nums ${row.surplus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {row.surplus >= 0 ? fmt(row.surplus) : `(${fmt(Math.abs(row.surplus))})`}
-                    </td>
-                    <td className={`text-right py-2 px-2 font-medium tabular-nums ${row.cumulativeSavings >= 0 ? 'text-white' : 'text-red-400'}`}>
-                      {fmt(row.cumulativeSavings)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-slate-600 font-semibold text-sm">
-                  <td className="py-3 px-2 text-white">Annual</td>
-                  <td className="text-center py-3 px-2 text-slate-400 tabular-nums">{monthlySummary.reduce((s, r) => s + r.checks, 0)}</td>
-                  <td className="text-right py-3 px-2 text-white tabular-nums">{fmt(monthlySummary.reduce((s, r) => s + r.grossIncome, 0))}</td>
-                  <td className="text-right py-3 px-2 text-red-400 tabular-nums">({fmt(monthlySummary.reduce((s, r) => s + r.taxes, 0))})</td>
-                  <td className="text-right py-3 px-2 text-blue-400 tabular-nums">({fmt(monthlySummary.reduce((s, r) => s + r.deductions, 0))})</td>
-                  <td className="text-right py-3 px-2 text-emerald-400 tabular-nums">{fmt(monthlySummary.reduce((s, r) => s + r.netIncome, 0))}</td>
-                  <td className="text-right py-3 px-2 text-slate-400 tabular-nums">({fmt(monthlySummary.reduce((s, r) => s + r.expenses, 0))})</td>
-                  <td className={`text-right py-3 px-2 tabular-nums ${monthlySummary[11]?.surplus >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {fmt(monthlySummary.reduce((s, r) => s + r.surplus, 0))}
-                  </td>
-                  <td className="text-right py-3 px-2 text-white tabular-nums">{fmt(monthlySummary[11]?.cumulativeSavings ?? 0)}</td>
-                </tr>
-              </tfoot>
-            </table>
           </div>
         </div>
 
