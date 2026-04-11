@@ -27,7 +27,7 @@ const baseParams = {
 describe('buildRetirementIncomeWaterfall', () => {
   test('Returns one entry per year', () => {
     const data = buildRetirementIncomeWaterfall(baseParams);
-    expect(data).toHaveLength(30);
+    expect(data).toHaveLength(31); // inclusive: ages 65 through 95
   });
 
   test('First year age matches retirementAge', () => {
@@ -35,9 +35,9 @@ describe('buildRetirementIncomeWaterfall', () => {
     expect(data[0].age).toBe(65);
   });
 
-  test('Last year age is retirementAge + years - 1', () => {
+  test('Last year age equals retirementAge + years (inclusive)', () => {
     const data = buildRetirementIncomeWaterfall(baseParams);
-    expect(data[data.length - 1].age).toBe(94);
+    expect(data[data.length - 1].age).toBe(95);
   });
 
   test('Social Security is socialSecurityMonthly * 12 in year 1', () => {

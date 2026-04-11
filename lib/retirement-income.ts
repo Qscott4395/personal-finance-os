@@ -99,7 +99,7 @@ export function buildRetirementIncomeWaterfall(params: {
 
   const data: RetirementYearIncome[] = [];
 
-  for (let y = 0; y < years; y++) {
+  for (let y = 0; y <= years; y++) {
     const age = retirementAge + y;
     const ssAnnual = socialSecurityMonthly * 12 * Math.pow(1 + inflation, y);
     const pensionAnnual = pensionMonthly * 12 * Math.pow(1 + inflation, y);
