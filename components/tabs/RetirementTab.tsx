@@ -146,64 +146,22 @@ export default function RetirementTab(props: Props) {
           );
         })()}
 
-        {/* Waterfall chart */}
-        <WaterfallChart data={retirementWaterfall} />
-
-        {/* Portfolio balance chart — withdrawal rate based */}
-        <PortfolioBalanceChart data={retirementWaterfall} />
-
         {/* Portfolio balance chart — desired income based */}
-        <div className="space-y-2">
-          <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">
-            Portfolio Balance at {fmt(desiredIncomeAtRetirement)}/yr Desired Income
-            <span className="normal-case text-slate-600 ml-1">
-              — *{fmt(wantedRetIncome)} today + inflation to age {retirementAge}
-            </span>
-          </p>
-          <PortfolioBalanceChart data={desiredIncomeWaterfall} />
-          {(() => {
-            const lastDesired = desiredIncomeWaterfall[desiredIncomeWaterfall.length - 1];
-            const lastMain = retirementWaterfall[retirementWaterfall.length - 1];
-            if (!lastDesired || !lastMain) return null;
-            const diff = lastDesired.remainingTotal - lastMain.remainingTotal;
-            return (
-              <div className="bg-slate-700/40 rounded-lg p-3 text-xs">
-                <span className="text-slate-400">At desired income ({fmt(desiredIncomeAtRetirement)}/yr): </span>
-                <span className={lastDesired.remainingTotal > 0 ? 'text-emerald-400' : 'text-red-400'}>
-                  {lastDesired.remainingTotal > 0
-                    ? `${fmt(lastDesired.remainingTotal)} remaining at age ${planThroughAge}`
-                    : `Portfolio depletes before age ${planThroughAge}`}
-                </span>
-                {diff !== 0 && lastMain.remainingTotal > 0 && (
-                  <span className="text-slate-500 ml-2">
-                    ({diff > 0 ? '+' : ''}{fmt(diff)} vs {withdrawalRate}% withdrawal)
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Withdrawal order explanation */}
-        <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">
-          <p className="text-slate-400 text-xs uppercase tracking-wider font-medium">Tax-Efficient Withdrawal Order</p>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { num: '1', label: 'Brokerage', note: 'Capital gains rate (15%)', color: 'text-amber-400' },
-              { num: '2', label: '401(k)', note: 'Ordinary income rate', color: 'text-blue-400' },
-              { num: '3', label: 'Cash', note: 'Buffer / emergency', color: 'text-slate-300' },
-              { num: '4', label: 'Roth IRA', note: 'Tax-free — save for last', color: 'text-emerald-400' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-2 border border-slate-700">
-                <span className="text-purple-400 font-bold text-sm">{item.num}</span>
-                <div>
-                  <p className={`text-xs font-medium ${item.color}`}>{item.label}</p>
-                  <p className="text-slate-500 text-[10px]">{item.note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PortfolioBalanceChart data={desiredIncomeWaterfall} />
+        {(() => {
+          const lastDesired = desiredIncomeWaterfall[desiredIncomeWaterfall.length - 1];
+          if (!lastDesired) return null;
+          return (
+            <div className="bg-slate-700/40 rounded-lg p-3 text-xs">
+              <span className="text-slate-400">At {fmt(desiredIncomeAtRetirement)}/yr ({fmt(wantedRetIncome)} today + inflation): </span>
+              <span className={lastDesired.remainingTotal > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                {lastDesired.remainingTotal > 0
+                  ? `${fmt(lastDesired.remainingTotal)} remaining at age ${planThroughAge}`
+                  : `Portfolio depletes before age ${planThroughAge}`}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Tax comparison */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
