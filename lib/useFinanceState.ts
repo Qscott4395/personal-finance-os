@@ -11,6 +11,7 @@ import {
 import { calculateWithdrawal, buildComparisonTable } from '@/lib/withdrawal';
 import { buildTrinityHeatMap, maxSafeWithdrawalRate, runMonteCarloSimulation } from '@/lib/survivability';
 import { buildRetirementIncomeWaterfall, compareWorkingVsRetirementTax } from '@/lib/retirement-income';
+import { simulatePayoff, compareStrategies, type DebtEntry, type DebtStrategy } from '@/lib/debt-strategy';
 import { CHART_COLORS as C } from '@/lib/constants';
 
 export interface SavingsGoal {
@@ -114,6 +115,16 @@ export function useFinanceState() {
     { id: 2, name: 'Vacation', target: 3000, current: 800 },
   ]);
   const [nextGoalId, setNextGoalId] = useState(3);
+
+  // ── Debt Strategy ──────────────────────────────────────────────────────────────
+  const [debtEntries, setDebtEntries] = useState<DebtEntry[]>([
+    { id: 1, name: 'Student Loans', balance: 35_000, apr: 5.5, minPayment: 300 },
+    { id: 2, name: 'Credit Cards',  balance: 8_000,  apr: 22.5, minPayment: 150 },
+    { id: 3, name: 'Other Debts',   balance: 3_000,  apr: 8.0, minPayment: 50 },
+  ]);
+  const [nextDebtId,       setNextDebtId]       = useState(4);
+  const [debtExtraPayment, setDebtExtraPayment] = useState(0);
+  const [debtStrategy,     setDebtStrategy]     = useState<DebtStrategy>('avalanche');
 
   // ── Derived: Tax ─────────────────────────────────────────────────────────────
   const tax = useMemo(
@@ -245,6 +256,16 @@ export function useFinanceState() {
       retirementWaterfall[0]?.totalGross ?? 0,
     ),
     [salary, retirementWaterfall],
+  );
+
+  // ── Derived: Debt Strategy ──────────────────────────────────────────────────
+  const debtPayoffResult = useMemo(
+    () => simulatePayoff(debtEntries, debtExtraPayment, debtStrategy),
+    [debtEntries, debtExtraPayment, debtStrategy],
+  );
+  const debtComparison = useMemo(
+    () => compareStrategies(debtEntries, debtExtraPayment),
+    [debtEntries, debtExtraPayment],
   );
 
   // ── Derived: Inflation-Adjusted Projection Data ───────────────────────────────
@@ -407,6 +428,12 @@ export function useFinanceState() {
     savingsGoals, setSavingsGoals,
     nextGoalId, setNextGoalId,
 
+    // ── Debt Strategy state ──
+    debtEntries, setDebtEntries,
+    nextDebtId, setNextDebtId,
+    debtExtraPayment, setDebtExtraPayment,
+    debtStrategy, setDebtStrategy,
+
     // ── Derived values ──
     tax,
     projection,
@@ -437,6 +464,8 @@ export function useFinanceState() {
     timeline,
     scenarioResults,
     incomeBarData,
+    debtPayoffResult,
+    debtComparison,
   };
 }
 

@@ -9,8 +9,9 @@ import CashFlowTab from '@/components/tabs/CashFlowTab';
 import InvestmentsTab from '@/components/tabs/InvestmentsTab';
 import RetirementTab from '@/components/tabs/RetirementTab';
 import PlanningTab from '@/components/tabs/PlanningTab';
+import DebtStrategyTab from '@/components/tabs/DebtStrategyTab';
 
-const TABS = ['Dashboard', 'Cash Flow', 'Investments', 'Retirement', 'Planning'] as const;
+const TABS = ['Dashboard', 'Cash Flow', 'Investments', 'Retirement', 'Debt Strategy', 'Planning'] as const;
 type Tab = typeof TABS[number];
 
 export default function Page() {
@@ -177,7 +178,9 @@ export default function Page() {
         {activeTab === 'Retirement' && (
           <RetirementTab
             salary={s.salary}
+            currentAge={s.currentAge}
             retirementAge={s.retirementAge}
+            inflationRate={s.inflationRate}
             withdrawalRate={s.withdrawalRate} setWithdrawalRate={s.setWithdrawalRate}
             retReturnRate={s.retReturnRate} setRetReturnRate={s.setRetReturnRate}
             targetConfidence={s.targetConfidence} setTargetConfidence={s.setTargetConfidence}
@@ -195,6 +198,18 @@ export default function Page() {
             monteCarloResult={s.monteCarloResult}
             retirementWaterfall={s.retirementWaterfall}
             taxComparison={s.taxComparison}
+          />
+        )}
+
+        {activeTab === 'Debt Strategy' && (
+          <DebtStrategyTab
+            debtEntries={s.debtEntries} setDebtEntries={s.setDebtEntries}
+            nextDebtId={s.nextDebtId} setNextDebtId={s.setNextDebtId}
+            debtExtraPayment={s.debtExtraPayment} setDebtExtraPayment={s.setDebtExtraPayment}
+            debtStrategy={s.debtStrategy} setDebtStrategy={s.setDebtStrategy}
+            debtPayoffResult={s.debtPayoffResult}
+            debtComparison={s.debtComparison}
+            monthlySurplus={s.monthlySurplus}
           />
         )}
 

@@ -8,7 +8,9 @@ import type { FinanceState } from '@/lib/useFinanceState';
 
 type Props = Pick<FinanceState,
   | 'salary'
+  | 'currentAge'
   | 'retirementAge'
+  | 'inflationRate'
   | 'withdrawalRate' | 'setWithdrawalRate'
   | 'retReturnRate' | 'setRetReturnRate'
   | 'targetConfidence' | 'setTargetConfidence'
@@ -31,7 +33,9 @@ type Props = Pick<FinanceState,
 export default function RetirementTab(props: Props) {
   const {
     salary,
+    currentAge,
     retirementAge,
+    inflationRate,
     withdrawalRate, setWithdrawalRate,
     retReturnRate, setRetReturnRate,
     targetConfidence, setTargetConfidence,
@@ -96,23 +100,42 @@ export default function RetirementTab(props: Props) {
 
         {/* Effective withdrawal indicator */}
         {(() => {
+          const yearsToRetirement = Math.max(0, retirementAge - currentAge);
+          const inflationMultiplier = Math.pow(1 + inflationRate / 100, yearsToRetirement);
+          const inflationAdjusted = Math.round(wantedRetIncome * inflationMultiplier);
           const pctBased = Math.round(projection.finalValue * (withdrawalRate / 100));
-          const effective = Math.max(pctBased, wantedRetIncome);
-          const usingDesired = wantedRetIncome > pctBased;
+          const effective = Math.max(pctBased, inflationAdjusted);
+          const usingDesired = inflationAdjusted > pctBased;
           return (
-            <div className={`rounded-lg p-3 text-xs ${usingDesired ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-700/40'}`}>
-              <div className="flex flex-wrap items-center gap-4">
-                <div>
-                  <span className="text-slate-500 uppercase tracking-wider">Year 1 Annual Spend: </span>
-                  <span className="text-white font-bold tabular-nums">{fmt(effective)}</span>
-                  <span className="text-slate-500"> / yr ({fmt(Math.round(effective / 12))} / mo)</span>
+            <div className="space-y-2">
+              <div className="bg-slate-700/40 rounded-lg p-3 text-xs">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div>
+                    <span className="text-slate-500 uppercase tracking-wider">Desired Income at Age {retirementAge}: </span>
+                    <span className="text-white font-bold tabular-nums">{fmt(inflationAdjusted)}</span>
+                    <span className="text-slate-500"> / yr ({fmt(Math.round(inflationAdjusted / 12))} / mo)</span>
+                  </div>
+                  <div className="text-slate-500">
+                    <span className="text-slate-400">
+                      *{fmt(wantedRetIncome)} today + {inflationRate}% inflation × {yearsToRetirement} yrs
+                    </span>
+                  </div>
                 </div>
-                <div className="text-slate-500">
-                  {usingDesired ? (
-                    <span className="text-amber-400">Using desired income — {withdrawalRate}% of portfolio ({fmt(pctBased)}) is below your target</span>
-                  ) : (
-                    <span className="text-slate-400">Using {withdrawalRate}% withdrawal rate — exceeds your {fmt(wantedRetIncome)} desired income</span>
-                  )}
+              </div>
+              <div className={`rounded-lg p-3 text-xs ${usingDesired ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-700/40'}`}>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div>
+                    <span className="text-slate-500 uppercase tracking-wider">Year 1 Annual Spend: </span>
+                    <span className="text-white font-bold tabular-nums">{fmt(effective)}</span>
+                    <span className="text-slate-500"> / yr ({fmt(Math.round(effective / 12))} / mo)</span>
+                  </div>
+                  <div className="text-slate-500">
+                    {usingDesired ? (
+                      <span className="text-amber-400">Using desired income — {withdrawalRate}% of portfolio ({fmt(pctBased)}) is below your inflation-adjusted target</span>
+                    ) : (
+                      <span className="text-slate-400">Using {withdrawalRate}% withdrawal rate — exceeds your {fmt(inflationAdjusted)} inflation-adjusted target</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
