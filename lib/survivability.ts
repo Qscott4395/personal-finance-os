@@ -219,7 +219,9 @@ export function runMonteCarloSimulation(params: {
 
     if (!failed) {
       successes++;
-      endingBalances.push(Math.round(balance));
+      // Deflate to today's dollars so ending balances are in real terms
+      const realBalance = balance / Math.pow(1 + inflation, years);
+      endingBalances.push(Math.round(realBalance));
     }
   }
 

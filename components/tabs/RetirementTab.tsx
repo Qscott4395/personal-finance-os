@@ -411,7 +411,7 @@ export default function RetirementTab(props: Props) {
           </div>
           <div className="bg-slate-700/40 rounded-lg p-4">
             <p className="text-purple-400 text-sm leading-relaxed">
-              Median ending balance: <strong>{fmt(monteCarloResult.medianEndingBalance)}</strong>
+              Median ending balance: <strong>{fmt(monteCarloResult.medianEndingBalance)}</strong> (today&apos;s dollars)
               {monteCarloResult.medianEndingBalance > projection.finalValue && ' — your portfolio likely grows in retirement.'}
             </p>
           </div>
