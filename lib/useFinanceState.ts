@@ -221,18 +221,12 @@ export function useFinanceState() {
     () => maxSafeWithdrawalRate(targetAlloc.equity, retDuration, targetConfidence),
     [targetAlloc.equity, retDuration, targetConfidence],
   );
-  const monteCarloResult = useMemo(
-    () => runMonteCarloSimulation({
-      portfolioValue: projection.finalValue,
-      annualWithdrawal: Math.max(projection.finalValue * (withdrawalRate / 100), wantedRetIncome),
-      equityPct: targetAlloc.equity,
-      inflationRate: inflationRate / 100,
-      years: retDuration,
-    }),
-    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration, wantedRetIncome],
+  // ── Derived: Retirement Income Waterfall ────────────────────────────────────────
+  // Desired income adjusted for inflation to retirement age
+  const desiredIncomeAtRetirement = Math.round(
+    wantedRetIncome * Math.pow(1 + inflationRate / 100, Math.max(0, retirementAge - currentAge)),
   );
 
-  // ── Derived: Retirement Income Waterfall ────────────────────────────────────────
   const retirementWaterfall = useMemo(
     () => buildRetirementIncomeWaterfall({
       retirementAge,
@@ -250,9 +244,16 @@ export function useFinanceState() {
     }),
     [retirementAge, socialSecurityMo, pensionMo, projection, withdrawalRate, inflationRate, retReturnRate, retDuration, wantedRetIncome],
   );
-  // Desired-income-only waterfall: shows what happens if you withdraw exactly your desired income
-  const desiredIncomeAtRetirement = Math.round(
-    wantedRetIncome * Math.pow(1 + inflationRate / 100, Math.max(0, retirementAge - currentAge)),
+
+  const monteCarloResult = useMemo(
+    () => runMonteCarloSimulation({
+      portfolioValue: projection.finalValue,
+      annualWithdrawal: Math.max(projection.finalValue * (withdrawalRate / 100), desiredIncomeAtRetirement),
+      equityPct: targetAlloc.equity,
+      inflationRate,
+      years: retDuration,
+    }),
+    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration, desiredIncomeAtRetirement],
   );
   const desiredIncomeWaterfall = useMemo(
     () => buildRetirementIncomeWaterfall({
