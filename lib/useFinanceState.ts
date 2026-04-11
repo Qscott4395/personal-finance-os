@@ -251,9 +251,10 @@ export function useFinanceState() {
       annualWithdrawal: Math.max(projection.finalValue * (withdrawalRate / 100), desiredIncomeAtRetirement),
       equityPct: targetAlloc.equity,
       inflationRate,
+      expectedReturn: retReturnRate,
       years: retDuration,
     }),
-    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retDuration, desiredIncomeAtRetirement],
+    [projection.finalValue, withdrawalRate, targetAlloc.equity, inflationRate, retReturnRate, retDuration, desiredIncomeAtRetirement],
   );
   const desiredIncomeWaterfall = useMemo(
     () => buildRetirementIncomeWaterfall({

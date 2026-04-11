@@ -151,6 +151,7 @@ describe('runMonteCarloSimulation', () => {
     annualWithdrawal: 40_000,
     equityPct: 60,
     inflationRate: 3,
+    expectedReturn: 5,
     years: 30,
     runs: 500,
   };

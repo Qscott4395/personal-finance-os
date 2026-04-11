@@ -159,32 +159,31 @@ export function runMonteCarloSimulation(params: {
   portfolioValue: number;
   annualWithdrawal: number;
   equityPct: number;
-  inflationRate: number;
+  inflationRate: number;    // percentage (e.g. 3)
+  expectedReturn: number;   // percentage (e.g. 5) — should match retReturnRate
   years: number;
   runs?: number;
-  equityMean?: number;    // nominal, default 0.10
-  equityStdDev?: number;  // default 0.18
-  bondReturn?: number;    // nominal, default 0.05
 }): MonteCarloResult {
   const {
     portfolioValue,
     annualWithdrawal,
     equityPct,
     inflationRate,
+    expectedReturn,
     years,
     runs = 10000,
-    equityMean = 0.10,
-    equityStdDev = 0.18,
-    bondReturn = 0.05,
   } = params;
 
-  const eqWeight = equityPct / 100;
-  const bondWeight = 1 - eqWeight;
   const inflation = inflationRate / 100;
+  const meanReturn = expectedReturn / 100;
 
-  // Log-normal parameters for equity
-  const mu = Math.log(1 + equityMean) - (equityStdDev * equityStdDev) / 2;
-  const sigma = equityStdDev;
+  // Volatility scales with equity allocation: 100% equity → 18% stddev, 0% equity → 3% stddev
+  const maxVol = 0.18;
+  const minVol = 0.03;
+  const sigma = minVol + (maxVol - minVol) * (equityPct / 100);
+
+  // Log-normal parameters centered on the user's expected return
+  const mu = Math.log(1 + meanReturn) - (sigma * sigma) / 2;
 
   const endingBalances: number[] = [];
   const failureAges: number[] = [];
@@ -202,9 +201,8 @@ export function runMonteCarloSimulation(params: {
         break;
       }
 
-      // Random equity return (log-normal)
-      const eqReturn = Math.exp(mu + sigma * randomNormal()) - 1;
-      const portfolioReturn = eqWeight * eqReturn + bondWeight * bondReturn;
+      // Random portfolio return (log-normal centered on expectedReturn)
+      const portfolioReturn = Math.exp(mu + sigma * randomNormal()) - 1;
 
       balance -= withdrawal;
       if (balance <= 0) {
