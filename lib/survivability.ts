@@ -220,10 +220,12 @@ export function runMonteCarloSimulation(params: {
       // Deflate to today's dollars so ending balances are in real terms
       const realBalance = balance / Math.pow(1 + inflation, years);
       endingBalances.push(Math.round(realBalance));
+    } else {
+      endingBalances.push(0); // failed runs count as $0 for percentiles
     }
   }
 
-  // Sort ending balances for percentiles
+  // Sort ending balances for percentiles — includes ALL runs ($0 for failures)
   endingBalances.sort((a, b) => a - b);
   const pct = (p: number) => endingBalances[Math.floor(endingBalances.length * p / 100)] ?? 0;
 

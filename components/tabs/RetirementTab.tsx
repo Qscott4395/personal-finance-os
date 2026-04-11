@@ -64,10 +64,19 @@ export default function RetirementTab(props: Props) {
           <p className="text-slate-400 text-sm">Income sources and tax-efficient withdrawal order</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl">
           <div>
             <NumInput label="Desired Annual Income" value={wantedRetIncome} onChange={setWantedRetIncome} prefix="$" step={5000} />
-            <p className="text-slate-600 text-[10px] mt-1">How much you want to live on per year in retirement (today's dollars)</p>
+            <p className="text-slate-600 text-[10px] mt-1">How much you want to live on per year in retirement (today&apos;s dollars)</p>
+          </div>
+          <div>
+            <Slider
+              label="Retirement Return Rate"
+              value={retReturnRate} min={1} max={10} step={0.5}
+              onChange={setRetReturnRate}
+              display={`${retReturnRate}%`}
+            />
+            <p className="text-slate-600 text-[10px] mt-1">Expected annual portfolio return during retirement</p>
           </div>
           <NumInput label="Social Security (Monthly)" value={socialSecurityMo} onChange={setSocialSecurityMo} prefix="$" step={100} />
           <NumInput label="Pension (Monthly)" value={pensionMo} onChange={setPensionMo} prefix="$" step={100} />
@@ -321,18 +330,12 @@ export default function RetirementTab(props: Props) {
           <p className="text-slate-400 text-sm">Trinity Study data + Monte Carlo simulation</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
           <Slider
             label="Withdrawal Rate"
             value={withdrawalRate} min={2} max={8} step={0.25}
             onChange={setWithdrawalRate}
             display={`${withdrawalRate}%`}
-          />
-          <Slider
-            label="Retirement Return Rate"
-            value={retReturnRate} min={1} max={10} step={0.5}
-            onChange={setRetReturnRate}
-            display={`${retReturnRate}%`}
           />
           <Slider
             label="Plan Through Age"
