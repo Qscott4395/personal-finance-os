@@ -191,8 +191,6 @@ export default function Page() {
             pensionMo={s.pensionMo} setPensionMo={s.setPensionMo}
             projection={s.projection}
             targetAlloc={s.targetAlloc}
-            withdrawalResult={s.withdrawalResult}
-            comparisonTable={s.comparisonTable}
             trinityHeatMap={s.trinityHeatMap}
             maxSafeRate={s.maxSafeRate}
             monteCarloResult={s.monteCarloResult}
