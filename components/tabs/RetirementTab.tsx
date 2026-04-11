@@ -27,6 +27,8 @@ type Props = Pick<FinanceState,
   | 'maxSafeRate'
   | 'monteCarloResult'
   | 'retirementWaterfall'
+  | 'desiredIncomeWaterfall'
+  | 'desiredIncomeAtRetirement'
   | 'taxComparison'
 >;
 
@@ -52,6 +54,8 @@ export default function RetirementTab(props: Props) {
     maxSafeRate,
     monteCarloResult,
     retirementWaterfall,
+    desiredIncomeWaterfall,
+    desiredIncomeAtRetirement,
     taxComparison,
   } = props;
 
@@ -145,8 +149,40 @@ export default function RetirementTab(props: Props) {
         {/* Waterfall chart */}
         <WaterfallChart data={retirementWaterfall} />
 
-        {/* Portfolio balance chart */}
+        {/* Portfolio balance chart — withdrawal rate based */}
         <PortfolioBalanceChart data={retirementWaterfall} />
+
+        {/* Portfolio balance chart — desired income based */}
+        <div className="space-y-2">
+          <p className="text-slate-500 text-xs uppercase tracking-wider font-medium">
+            Portfolio Balance at {fmt(desiredIncomeAtRetirement)}/yr Desired Income
+            <span className="normal-case text-slate-600 ml-1">
+              — *{fmt(wantedRetIncome)} today + inflation to age {retirementAge}
+            </span>
+          </p>
+          <PortfolioBalanceChart data={desiredIncomeWaterfall} />
+          {(() => {
+            const lastDesired = desiredIncomeWaterfall[desiredIncomeWaterfall.length - 1];
+            const lastMain = retirementWaterfall[retirementWaterfall.length - 1];
+            if (!lastDesired || !lastMain) return null;
+            const diff = lastDesired.remainingTotal - lastMain.remainingTotal;
+            return (
+              <div className="bg-slate-700/40 rounded-lg p-3 text-xs">
+                <span className="text-slate-400">At desired income ({fmt(desiredIncomeAtRetirement)}/yr): </span>
+                <span className={lastDesired.remainingTotal > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                  {lastDesired.remainingTotal > 0
+                    ? `${fmt(lastDesired.remainingTotal)} remaining at age ${planThroughAge}`
+                    : `Portfolio depletes before age ${planThroughAge}`}
+                </span>
+                {diff !== 0 && lastMain.remainingTotal > 0 && (
+                  <span className="text-slate-500 ml-2">
+                    ({diff > 0 ? '+' : ''}{fmt(diff)} vs {withdrawalRate}% withdrawal)
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Withdrawal order explanation */}
         <div className="bg-slate-700/40 rounded-lg p-4 space-y-2">

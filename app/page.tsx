@@ -197,6 +197,8 @@ export default function Page() {
             maxSafeRate={s.maxSafeRate}
             monteCarloResult={s.monteCarloResult}
             retirementWaterfall={s.retirementWaterfall}
+            desiredIncomeWaterfall={s.desiredIncomeWaterfall}
+            desiredIncomeAtRetirement={s.desiredIncomeAtRetirement}
             taxComparison={s.taxComparison}
           />
         )}

@@ -250,6 +250,28 @@ export function useFinanceState() {
     }),
     [retirementAge, socialSecurityMo, pensionMo, projection, withdrawalRate, inflationRate, retReturnRate, retDuration, wantedRetIncome],
   );
+  // Desired-income-only waterfall: shows what happens if you withdraw exactly your desired income
+  const desiredIncomeAtRetirement = Math.round(
+    wantedRetIncome * Math.pow(1 + inflationRate / 100, Math.max(0, retirementAge - currentAge)),
+  );
+  const desiredIncomeWaterfall = useMemo(
+    () => buildRetirementIncomeWaterfall({
+      retirementAge,
+      socialSecurityMonthly: socialSecurityMo,
+      pensionMonthly: pensionMo,
+      balance401k: projection.final401k,
+      balanceRoth: projection.finalRoth,
+      balanceBrokerage: projection.finalBrokerage,
+      balanceCash: projection.finalCash,
+      withdrawalRate: 0, // force desired income as the sole driver
+      inflationRate,
+      retirementReturnRate: retReturnRate,
+      years: retDuration,
+      annualLivingExpenses: desiredIncomeAtRetirement,
+    }),
+    [retirementAge, socialSecurityMo, pensionMo, projection, inflationRate, retReturnRate, retDuration, desiredIncomeAtRetirement],
+  );
+
   const taxComparison = useMemo(
     () => compareWorkingVsRetirementTax(
       salary,
@@ -459,6 +481,8 @@ export function useFinanceState() {
     maxSafeRate,
     monteCarloResult,
     retirementWaterfall,
+    desiredIncomeWaterfall,
+    desiredIncomeAtRetirement,
     taxComparison,
     chartData,
     timeline,
