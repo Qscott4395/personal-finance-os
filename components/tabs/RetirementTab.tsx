@@ -94,6 +94,31 @@ export default function RetirementTab(props: Props) {
           </div>
         </div>
 
+        {/* Effective withdrawal indicator */}
+        {(() => {
+          const pctBased = Math.round(projection.finalValue * (withdrawalRate / 100));
+          const effective = Math.max(pctBased, wantedRetIncome);
+          const usingDesired = wantedRetIncome > pctBased;
+          return (
+            <div className={`rounded-lg p-3 text-xs ${usingDesired ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-700/40'}`}>
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <span className="text-slate-500 uppercase tracking-wider">Year 1 Annual Spend: </span>
+                  <span className="text-white font-bold tabular-nums">{fmt(effective)}</span>
+                  <span className="text-slate-500"> / yr ({fmt(Math.round(effective / 12))} / mo)</span>
+                </div>
+                <div className="text-slate-500">
+                  {usingDesired ? (
+                    <span className="text-amber-400">Using desired income — {withdrawalRate}% of portfolio ({fmt(pctBased)}) is below your target</span>
+                  ) : (
+                    <span className="text-slate-400">Using {withdrawalRate}% withdrawal rate — exceeds your {fmt(wantedRetIncome)} desired income</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Waterfall chart */}
         <WaterfallChart data={retirementWaterfall} />
 
